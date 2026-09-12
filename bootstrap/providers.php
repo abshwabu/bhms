@@ -8,4 +8,5 @@ return [
     App\Domain\OPD\Providers\OpdDomainServiceProvider::class,
     App\Domain\IPD\Providers\IpdDomainServiceProvider::class,
     App\Domain\Clinical\Providers\ClinicalDomainServiceProvider::class,
+    App\Domain\Laboratory\Providers\LaboratoryDomainServiceProvider::class,
 ];
