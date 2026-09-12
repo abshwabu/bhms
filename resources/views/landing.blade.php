@@ -98,7 +98,7 @@
             <!-- Action CTAs -->
             <div class="hidden sm:flex items-center gap-3">
                 <a
-                    href="{{ url('/app') }}"
+                    href="{{ url('/login') }}"
                     class="px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 hover:border-slate-500 hover:bg-slate-800 text-slate-200 transition"
                 >
                     Sign In to Portal
@@ -132,7 +132,7 @@
             <a href="#pricing" class="block py-2 text-sm text-slate-300 hover:text-white">Pricing & Plans</a>
             <a href="#faq" class="block py-2 text-sm text-slate-300 hover:text-white">FAQ</a>
             <div class="pt-4 flex flex-col gap-2">
-                <a href="{{ url('/app') }}" class="w-full text-center py-2.5 rounded-xl text-xs font-bold border border-slate-700 text-slate-200">
+                <a href="{{ url('/login') }}" class="w-full text-center py-2.5 rounded-xl text-xs font-bold border border-slate-700 text-slate-200">
                     Sign In to Portal
                 </a>
                 <a href="#demo-request" class="w-full text-center py-2.5 rounded-xl text-xs font-bold bg-sky-500 text-slate-950">

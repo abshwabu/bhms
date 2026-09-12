@@ -1,5 +1,12 @@
 <template>
-  <div class="min-h-screen bg-slate-100/70 font-sans text-slate-800 flex flex-col">
+  <!-- Unauthenticated Staff Sign In Page -->
+  <SignInView
+    v-if="!currentUser"
+    @login-success="handleLoginSuccess"
+  />
+
+  <!-- Authenticated Hospital Application Portal -->
+  <div v-else class="min-h-screen bg-slate-100/70 font-sans text-slate-800 flex flex-col">
     <!-- Persistent Support Impersonation Banner -->
     <div
       v-if="isImpersonating"
@@ -38,31 +45,52 @@
       <!-- Sidebar Navigation -->
       <aside class="w-64 bg-slate-900 text-white flex flex-col justify-between shrink-0 shadow-xl">
       <div>
-        <!-- Brand Header -->
+        <!-- Brand Header with Tenant Isolation -->
         <div class="p-6 border-b border-slate-800">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-blue-500/30">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-blue-500/30 shrink-0">
               +
             </div>
-            <div>
-              <div class="font-extrabold text-base tracking-tight leading-tight">Metro HMS</div>
-              <div class="text-[11px] text-blue-400 font-medium">Hospital Management</div>
+            <div class="min-w-0">
+              <div class="font-extrabold text-base tracking-tight leading-tight truncate text-white">
+                {{ currentOrganization?.name || 'Metro Health System' }}
+              </div>
+              <div class="text-[11px] text-blue-400 font-medium flex items-center gap-1.5 truncate">
+                <span>{{ currentOrganization?.code || 'MHS' }}</span>
+                <span>&bull;</span>
+                <span class="capitalize text-emerald-400">{{ currentOrganization?.plan_tier || 'Enterprise' }}</span>
+              </div>
             </div>
           </div>
 
-          <!-- Active Branch Badge -->
-          <div class="mt-4 p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-between text-xs">
-            <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span class="font-medium text-slate-300">Metro General (Main)</span>
+          <!-- Active Branch Selector / Multi-Tenant Badge -->
+          <div class="mt-4 p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/60">
+            <div class="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1">
+              <span class="flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>FACILITY BRANCH</span>
+              </span>
+              <span class="font-mono text-slate-300 font-bold">{{ currentBranch?.code || 'MAIN' }}</span>
             </div>
-            <span class="font-mono text-[10px] text-slate-400">MAIN</span>
+            <select
+              v-if="accessibleBranches && accessibleBranches.length > 1"
+              :value="activeBranchId"
+              @change="handleBranchChange($event.target.value)"
+              class="w-full mt-1 bg-slate-900 border border-slate-700 text-white rounded-lg px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer"
+            >
+              <option v-for="br in accessibleBranches" :key="br.id" :value="br.id">
+                {{ br.name }} ({{ br.code }})
+              </option>
+            </select>
+            <div v-else class="text-xs font-semibold text-slate-200 truncate mt-0.5">
+              {{ currentBranch?.name || 'Metro General Hospital (Main Campus)' }}
+            </div>
           </div>
         </div>
 
         <!-- Navigation Links -->
         <nav class="p-4 space-y-1.5 overflow-y-auto max-h-[calc(100vh-160px)]">
-          <!-- Patient Records -->
+          <!-- Patient Records (All Authenticated Staff) -->
           <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 font-bold">Patient Records</div>
           
           <button
@@ -77,6 +105,7 @@
           </button>
 
           <button
+            v-if="isHospitalAdmin || isReceptionist || isNurse"
             @click="openRegistrationModal"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition cursor-pointer"
           >
@@ -87,12 +116,16 @@
           </button>
 
           <!-- Emergency & Ambulance (ER / EMS) -->
-          <div class="text-[10px] font-mono uppercase tracking-wider text-rose-500 px-3 py-1 mt-3 font-bold flex items-center justify-between">
+          <div
+            v-if="isHospitalAdmin || isDoctor || isNurse"
+            class="text-[10px] font-mono uppercase tracking-wider text-rose-500 px-3 py-1 mt-3 font-bold flex items-center justify-between"
+          >
             <span>Emergency & Trauma</span>
             <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
           </div>
 
           <button
+            v-if="isHospitalAdmin || isDoctor || isNurse"
             @click="currentView = 'emergency'"
             :class="currentView === 'emergency' ? 'bg-rose-600 text-white font-semibold shadow-sm' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -104,9 +137,15 @@
           </button>
 
           <!-- Appointment & OPD -->
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Appointment & OPD</div>
+          <div
+            v-if="isHospitalAdmin || isDoctor || isReceptionist || isNurse"
+            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
+          >
+            Appointment & OPD
+          </div>
 
           <button
+            v-if="isHospitalAdmin || isDoctor || isReceptionist"
             @click="currentView = 'booking'"
             :class="currentView === 'booking' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -118,6 +157,7 @@
           </button>
 
           <button
+            v-if="isHospitalAdmin || isDoctor || isNurse || isReceptionist"
             @click="currentView = 'queue'"
             :class="currentView === 'queue' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -129,6 +169,7 @@
           </button>
 
           <button
+            v-if="isHospitalAdmin || isDoctor"
             @click="currentView = 'soap'"
             :class="currentView === 'soap' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -140,6 +181,7 @@
           </button>
 
           <button
+            v-if="isHospitalAdmin || isDoctor || isReceptionist"
             @click="currentView = 'referrals'"
             :class="currentView === 'referrals' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -151,9 +193,15 @@
           </button>
 
           <!-- Doctor & Clinical -->
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Doctor & Clinical</div>
+          <div
+            v-if="isHospitalAdmin || isDoctor || isNurse || isPharmacist"
+            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
+          >
+            Doctor & Clinical
+          </div>
 
           <button
+            v-if="isHospitalAdmin || isDoctor"
             @click="currentView = 'doctor_dashboard'"
             :class="currentView === 'doctor_dashboard' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -165,6 +213,7 @@
           </button>
 
           <button
+            v-if="isHospitalAdmin || isDoctor || isNurse"
             @click="navigateToEhrTimeline"
             :class="currentView === 'ehr' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -176,6 +225,7 @@
           </button>
 
           <button
+            v-if="isHospitalAdmin || isDoctor || isPharmacist"
             @click="navigateToPrescriptions"
             :class="currentView === 'prescriptions' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -187,9 +237,15 @@
           </button>
 
           <!-- Diagnostic Laboratory (LIS) -->
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Diagnostic Laboratory (LIS)</div>
+          <div
+            v-if="isHospitalAdmin || isDoctor || isLab"
+            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
+          >
+            Diagnostic Laboratory (LIS)
+          </div>
 
           <button
+            v-if="isHospitalAdmin || isDoctor || isLab"
             @click="currentView = 'laboratory'"
             :class="currentView === 'laboratory' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -201,6 +257,7 @@
           </button>
 
           <button
+            v-if="isHospitalAdmin || isDoctor || isLab"
             @click="currentView = 'radiology'"
             :class="currentView === 'radiology' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -212,9 +269,15 @@
           </button>
 
           <!-- Pharmacy & Dispensing -->
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Pharmacy & Dispensing</div>
+          <div
+            v-if="isHospitalAdmin || isPharmacist"
+            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
+          >
+            Pharmacy & Dispensing
+          </div>
 
           <button
+            v-if="isHospitalAdmin || isPharmacist"
             @click="currentView = 'pharmacy'"
             :class="currentView === 'pharmacy' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -226,9 +289,15 @@
           </button>
 
           <!-- Inpatient & IPD Management -->
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Inpatient & IPD</div>
+          <div
+            v-if="isHospitalAdmin || isDoctor || isNurse || isReceptionist"
+            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
+          >
+            Inpatient & IPD
+          </div>
 
           <button
+            v-if="isHospitalAdmin || isDoctor || isNurse || isReceptionist"
             @click="currentView = 'bed_map'"
             :class="currentView === 'bed_map' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -240,6 +309,7 @@
           </button>
 
           <button
+            v-if="isHospitalAdmin || isNurse"
             @click="currentView = 'nursing'"
             :class="currentView === 'nursing' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -251,6 +321,7 @@
           </button>
 
           <button
+            v-if="isHospitalAdmin || isDoctor || isNurse"
             @click="currentView = 'discharge'"
             :class="currentView === 'discharge' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -262,6 +333,7 @@
           </button>
 
           <button
+            v-if="isHospitalAdmin || isDoctor"
             @click="currentView = 'ipd_analytics'"
             :class="currentView === 'ipd_analytics' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -273,9 +345,15 @@
           </button>
 
           <!-- Billing & Finance -->
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Billing & Finance</div>
+          <div
+            v-if="isHospitalAdmin || isBilling"
+            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
+          >
+            Billing & Finance
+          </div>
 
           <button
+            v-if="isHospitalAdmin || isBilling"
             @click="currentView = 'billing'"
             :class="currentView === 'billing' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -287,9 +365,15 @@
           </button>
 
           <!-- Materials & Asset Management -->
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Materials & Assets</div>
+          <div
+            v-if="isHospitalAdmin || isNurse || isPharmacist"
+            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
+          >
+            Materials & Assets
+          </div>
 
           <button
+            v-if="isHospitalAdmin || isNurse || isPharmacist"
             @click="currentView = 'inventory'"
             :class="currentView === 'inventory' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -301,9 +385,15 @@
           </button>
 
           <!-- Human Resources & Staff Management -->
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Staff & Rostering</div>
+          <div
+            v-if="isHospitalAdmin"
+            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
+          >
+            Staff & Rostering
+          </div>
 
           <button
+            v-if="isHospitalAdmin"
             @click="currentView = 'hr'"
             :class="currentView === 'hr' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -315,9 +405,15 @@
           </button>
 
           <!-- Executive Intelligence & Reporting -->
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Intelligence & BI</div>
+          <div
+            v-if="isHospitalAdmin || isDoctor"
+            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
+          >
+            Intelligence & BI
+          </div>
 
           <button
+            v-if="isHospitalAdmin || isDoctor"
             @click="currentView = 'reports'"
             :class="currentView === 'reports' ? 'bg-indigo-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -329,6 +425,7 @@
           </button>
 
           <button
+            v-if="isHospitalAdmin || isDoctor"
             @click="currentView = 'telegram'"
             :class="currentView === 'telegram' ? 'bg-sky-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -340,9 +437,15 @@
           </button>
 
           <!-- Governance & Security -->
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Governance & Security</div>
+          <div
+            v-if="isHospitalAdmin"
+            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
+          >
+            Governance & Security
+          </div>
 
           <button
+            v-if="isHospitalAdmin"
             @click="currentView = 'compliance'"
             :class="currentView === 'compliance' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -354,6 +457,7 @@
           </button>
 
           <button
+            v-if="isHospitalAdmin"
             @click="currentView = 'admin'"
             :class="currentView === 'admin' ? 'bg-cyan-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -365,12 +469,19 @@
             System Administration
           </button>
 
-          <!-- Platform Operator Root -->
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Platform Vendor</div>
+          <!-- Platform Operator Root (Super Admin Vendor Only) -->
+          <div
+            v-if="isSuperAdmin"
+            class="text-[10px] font-mono uppercase tracking-wider text-amber-400 px-3 py-1 mt-3 font-bold flex items-center justify-between"
+          >
+            <span>Platform Vendor</span>
+            <span class="px-1.5 py-0.2 bg-amber-500/20 text-amber-300 rounded text-[9px]">ROOT</span>
+          </div>
 
           <button
+            v-if="isSuperAdmin"
             @click="currentView = 'super_admin'"
-            :class="currentView === 'super_admin' ? 'bg-indigo-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+            :class="currentView === 'super_admin' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -380,9 +491,15 @@
           </button>
 
           <!-- Portals -->
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Portals</div>
+          <div
+            v-if="isHospitalAdmin"
+            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
+          >
+            Portals
+          </div>
 
           <button
+            v-if="isHospitalAdmin"
             @click="currentView = 'portal'"
             :class="currentView === 'portal' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
             class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
@@ -395,22 +512,75 @@
         </nav>
       </div>
 
-      <!-- User Session Footer -->
-      <div class="p-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center font-bold text-white text-xs">
-            EV
+      <!-- User Session Footer with Quick Persona Switcher & Sign Out -->
+      <div class="p-3.5 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 bg-slate-950/40">
+        <div class="flex items-center gap-2.5 overflow-hidden">
+          <div class="w-8 h-8 rounded-full bg-blue-600/30 border border-blue-500/40 flex items-center justify-center font-bold text-white text-xs shrink-0">
+            {{ userInitials }}
           </div>
-          <div>
-            <div class="text-white font-medium text-xs">Dr. Eleanor Vance</div>
-            <div class="text-[10px] text-blue-400 capitalize">Doctor / Clinician</div>
+          <div class="truncate">
+            <div class="text-white font-medium text-xs truncate">{{ currentUser?.name }}</div>
+            <div class="text-[10px] text-blue-400 font-medium truncate">{{ currentUser?.primary_role }}</div>
           </div>
+        </div>
+
+        <div class="flex items-center gap-1 shrink-0">
+          <button
+            @click="showPersonaModal = true"
+            title="Switch RBAC Persona"
+            class="px-2 py-1 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-300 rounded-lg text-[10px] font-mono transition cursor-pointer flex items-center gap-1"
+          >
+            <span>⇄</span>
+            <span class="hidden sm:inline">Role</span>
+          </button>
+          <button
+            @click="handleSignOut"
+            title="Sign Out"
+            class="p-1.5 hover:bg-rose-950 hover:text-rose-400 text-slate-400 rounded-lg text-xs transition cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
         </div>
       </div>
     </aside>
 
     <!-- Main Content Area -->
-    <main class="flex-1 p-8 max-w-7xl mx-auto overflow-y-auto">
+    <main class="flex-1 p-8 max-w-7xl mx-auto overflow-y-auto w-full">
+      <!-- Access Restricted Alert if module is unauthorized for active role -->
+      <div v-if="!canAccessView(currentView)" class="max-w-xl mx-auto my-16 bg-white border border-amber-200 rounded-3xl p-8 shadow-sm text-center space-y-4">
+        <div class="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto text-amber-600 border border-amber-200">
+          <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div>
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-100 text-amber-800 uppercase tracking-wider">
+            RBAC Access Guard
+          </span>
+          <h2 class="text-xl font-bold text-slate-900 mt-2">Access Restricted</h2>
+          <p class="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+            Your current persona (<strong class="text-slate-800">{{ currentUser?.primary_role }}</strong>) does not have authorization to access the <span class="font-mono font-bold text-slate-700 uppercase">{{ currentView.replace('_', ' ') }}</span> module.
+          </p>
+        </div>
+        <div class="pt-2 flex items-center justify-center gap-3">
+          <button
+            @click="currentView = getDefaultViewForRole(currentUser)"
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition cursor-pointer shadow-sm"
+          >
+            Return to My Workspace
+          </button>
+          <button
+            @click="showPersonaModal = true"
+            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition cursor-pointer"
+          >
+            Switch Persona ⇄
+          </button>
+        </div>
+      </div>
+
+      <template v-else>
       <!-- Search Screen -->
       <PatientSearchScreen
         v-if="currentView === 'search'"
@@ -601,6 +771,7 @@
           </div>
         </div>
       </div>
+      </template>
     </main>
 
     <!-- Registration Modal -->
@@ -621,12 +792,85 @@
       @close="isOrderModalOpen = false"
       @order-created="handleOrderCreated"
     />
+
+    <!-- Quick Persona Switcher Modal -->
+    <div
+      v-if="showPersonaModal"
+      class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+      @click.self="showPersonaModal = false"
+    >
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative text-slate-100">
+        <div class="flex items-start justify-between mb-6 pb-4 border-b border-slate-800">
+          <div>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20 uppercase tracking-wider mb-2">
+              Instant RBAC Persona Simulator
+            </span>
+            <h2 class="text-xl font-bold text-white">Switch Role Persona</h2>
+            <p class="text-xs text-slate-400 mt-1">
+              Test role-based access control, hospital multi-tenant isolation, and tailored clinical workspaces.
+            </p>
+          </div>
+          <button
+            @click="showPersonaModal = false"
+            class="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition cursor-pointer"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Persona Cards Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
+          <button
+            v-for="persona in demoPersonas"
+            :key="persona.role_key"
+            @click="quickSwitchPersona(persona)"
+            :disabled="switchingPersona === persona.role_key"
+            :class="currentUser?.roles?.includes(persona.role_key) ? 'border-sky-500/80 bg-sky-950/20' : 'border-slate-800 bg-slate-950/50 hover:border-slate-700 hover:bg-slate-800/40'"
+            class="p-4 rounded-2xl border text-left transition cursor-pointer flex flex-col justify-between group relative disabled:opacity-50"
+          >
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                  {{ persona.role_label }}
+                </span>
+                <span
+                  v-if="currentUser?.roles?.includes(persona.role_key)"
+                  class="text-[10px] font-bold text-sky-400 flex items-center gap-1"
+                >
+                  <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span> Active
+                </span>
+              </div>
+              <div>
+                <div class="text-sm font-bold text-white group-hover:text-sky-300 transition">{{ persona.name }}</div>
+                <div class="text-[11px] text-slate-500 font-mono">{{ persona.email }}</div>
+              </div>
+              <div class="flex flex-wrap gap-1 pt-1">
+                <span
+                  v-for="(scope, idx) in (persona.accessible_scopes || []).slice(0, 3)"
+                  :key="idx"
+                  class="text-[9px] bg-slate-900 border border-slate-800 text-slate-400 px-1.5 py-0.5 rounded"
+                >
+                  {{ scope }}
+                </span>
+              </div>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-sky-400 font-semibold">
+              <span>{{ switchingPersona === persona.role_key ? 'Switching...' : 'Select Role' }}</span>
+              <span>&rarr;</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import SignInView from '../Auth/SignInView.vue';
 import PatientSearchScreen from './PatientSearchScreen.vue';
 import PatientProfileView from './PatientProfileView.vue';
 import RegistrationModal from './RegistrationModal.vue';
@@ -655,6 +899,14 @@ import AdministrationMasterView from '../Administration/AdministrationMasterView
 import TelegramManagementView from '../Telegram/TelegramManagementView.vue';
 import SuperAdminMasterView from '../SuperAdmin/SuperAdminMasterView.vue';
 
+// Authentication & Tenant Context State
+const currentUser = ref(null);
+const currentOrganization = ref(null);
+const currentBranch = ref(null);
+const accessibleBranches = ref([]);
+const showPersonaModal = ref(false);
+const switchingPersona = ref(null);
+
 const activeBranchId = ref('b9ff561a-5396-4309-9b08-3e7b358310e9');
 const currentView = ref('doctor_dashboard');
 const selectedPatient = ref(null);
@@ -668,7 +920,251 @@ const isImpersonating = ref(false);
 const impersonatedHospitalName = ref('');
 const exitingImpersonation = ref(false);
 
-onMounted(() => {
+// Built-in Demo Personas for Simulation
+const defaultDemoPersonas = [
+  {
+    role_key: 'super_admin',
+    role_label: 'Super Admin',
+    email: 'superadmin@hms.local',
+    password: 'password123',
+    name: 'Alex Thorne',
+    accessible_scopes: ['All Hospital Tenants', 'Feature Matrix', 'Queues & Latency', 'Impersonation'],
+  },
+  {
+    role_key: 'hospital_admin',
+    role_label: 'Hospital Admin',
+    email: 'admin@hms.local',
+    password: 'password123',
+    name: 'Dr. Arthur Sterling',
+    accessible_scopes: ['Multi-Branch Facilities', 'Compliance & HIPAA', 'Staff & Master Data', 'BI Reports'],
+  },
+  {
+    role_key: 'doctor',
+    role_label: 'Doctor / Clinician',
+    email: 'doctor@hms.local',
+    password: 'password123',
+    name: 'Dr. Eleanor Vance, MD',
+    accessible_scopes: ['Doctor Dashboard', 'EHR Clinical History', 'SOAP Consultations', 'Prescriptions & Lab Orders'],
+  },
+  {
+    role_key: 'nurse',
+    role_label: 'Inpatient Nurse',
+    email: 'nurse@hms.local',
+    password: 'password123',
+    name: 'Sister Clara Oswald, RN',
+    accessible_scopes: ['Bed Map Visuals', 'Nursing Station (Vitals/Meds)', 'Patient Intake', 'Discharge Summaries'],
+  },
+  {
+    role_key: 'pharmacist',
+    role_label: 'Chief Pharmacist',
+    email: 'pharmacist@hms.local',
+    password: 'password123',
+    name: 'Marcus Holloway, PharmD',
+    accessible_scopes: ['Pharmacy Dispensing', 'Drug Batches & Expiry', 'Stock Reorder Alerts', 'Patient Prescriptions'],
+  },
+  {
+    role_key: 'billing_officer',
+    role_label: 'Billing Officer',
+    email: 'billing@hms.local',
+    password: 'password123',
+    name: 'Jennifer Blake',
+    accessible_scopes: ['Invoices & Payments', 'Insurance Claims', 'Approvals Queue', 'Revenue Analytics'],
+  },
+  {
+    role_key: 'receptionist',
+    role_label: 'Reception / Registrar',
+    email: 'receptionist@hms.local',
+    password: 'password123',
+    name: 'Sarah Connor',
+    accessible_scopes: ['Patient Registration', 'Doctor Booking Calendar', 'OPD Queue Tokens & TV Display'],
+  },
+];
+const demoPersonas = ref(defaultDemoPersonas);
+
+// RBAC Role Computations
+const userRoles = computed(() => currentUser.value?.roles || []);
+const isSuperAdmin = computed(() => !!currentUser.value?.is_super_admin || userRoles.value.includes('super_admin'));
+const isHospitalAdmin = computed(() => isSuperAdmin.value || userRoles.value.includes('hospital_admin') || userRoles.value.includes('admin'));
+const isDoctor = computed(() => isHospitalAdmin.value || userRoles.value.includes('doctor'));
+const isNurse = computed(() => isHospitalAdmin.value || userRoles.value.includes('nurse'));
+const isPharmacist = computed(() => isHospitalAdmin.value || userRoles.value.includes('pharmacist'));
+const isBilling = computed(() => isHospitalAdmin.value || userRoles.value.includes('billing_officer'));
+const isReceptionist = computed(() => isHospitalAdmin.value || userRoles.value.includes('receptionist'));
+const isLab = computed(() => isHospitalAdmin.value || isDoctor.value || userRoles.value.includes('lab_technician') || userRoles.value.includes('radiologist'));
+
+// User Initials Display
+const userInitials = computed(() => {
+  if (!currentUser.value || !currentUser.value.name) return 'HMS';
+  const parts = currentUser.value.name.replace(/^(Dr\.|Sister|Mr\.|Ms\.|Mrs\.)\s+/i, '').trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+});
+
+// Default Workspace Dashboard per Role
+function getDefaultViewForRole(user) {
+  if (!user) return 'search';
+  const roles = user.roles || [];
+  if (user.is_super_admin || roles.includes('super_admin')) return 'super_admin';
+  if (roles.includes('hospital_admin') || roles.includes('admin')) return 'reports';
+  if (roles.includes('doctor')) return 'doctor_dashboard';
+  if (roles.includes('nurse')) return 'nursing';
+  if (roles.includes('pharmacist')) return 'pharmacy';
+  if (roles.includes('billing_officer')) return 'billing';
+  if (roles.includes('receptionist')) return 'booking';
+  return 'search';
+}
+
+// Check Module Authorization
+function canAccessView(view) {
+  if (!currentUser.value) return false;
+  if (isSuperAdmin.value) return true;
+  switch (view) {
+    case 'super_admin':
+      return isSuperAdmin.value;
+    case 'admin':
+    case 'compliance':
+    case 'hr':
+      return isHospitalAdmin.value;
+    case 'reports':
+    case 'telegram':
+      return isHospitalAdmin.value || isDoctor.value;
+    case 'billing':
+      return isHospitalAdmin.value || isBilling.value;
+    case 'inventory':
+      return isHospitalAdmin.value || isNurse.value || isPharmacist.value;
+    case 'pharmacy':
+      return isHospitalAdmin.value || isPharmacist.value;
+    case 'nursing':
+      return isHospitalAdmin.value || isNurse.value;
+    case 'bed_map':
+      return isHospitalAdmin.value || isDoctor.value || isNurse.value || isReceptionist.value;
+    case 'discharge':
+      return isHospitalAdmin.value || isDoctor.value || isNurse.value;
+    case 'ipd_analytics':
+      return isHospitalAdmin.value || isDoctor.value;
+    case 'doctor_dashboard':
+      return isHospitalAdmin.value || isDoctor.value;
+    case 'ehr':
+      return isHospitalAdmin.value || isDoctor.value || isNurse.value;
+    case 'prescriptions':
+      return isHospitalAdmin.value || isDoctor.value || isPharmacist.value;
+    case 'laboratory':
+    case 'radiology':
+      return isHospitalAdmin.value || isDoctor.value || isLab.value;
+    case 'soap':
+      return isHospitalAdmin.value || isDoctor.value;
+    case 'referrals':
+      return isHospitalAdmin.value || isDoctor.value || isReceptionist.value;
+    case 'queue':
+      return isHospitalAdmin.value || isDoctor.value || isNurse.value || isReceptionist.value;
+    case 'booking':
+      return isHospitalAdmin.value || isDoctor.value || isReceptionist.value;
+    case 'emergency':
+      return isHospitalAdmin.value || isDoctor.value || isNurse.value;
+    case 'search':
+    case 'profile':
+      return true;
+    case 'portal':
+      return isHospitalAdmin.value;
+    default:
+      return true;
+  }
+}
+
+function handleBranchChange(branchId) {
+  activeBranchId.value = branchId;
+  const found = accessibleBranches.value.find(b => b.id === branchId);
+  if (found) {
+    currentBranch.value = found;
+  }
+}
+
+function handleLoginSuccess(payload) {
+  currentUser.value = payload.user || payload.data?.user;
+  currentOrganization.value = payload.organization || payload.data?.organization;
+  currentBranch.value = payload.default_branch || payload.data?.default_branch;
+  accessibleBranches.value = payload.accessible_branches || payload.data?.accessible_branches || [];
+
+  if (currentBranch.value && currentBranch.value.id) {
+    activeBranchId.value = currentBranch.value.id;
+  } else if (accessibleBranches.value.length > 0) {
+    activeBranchId.value = accessibleBranches.value[0].id;
+    currentBranch.value = accessibleBranches.value[0];
+  }
+
+  const sessionData = {
+    user: currentUser.value,
+    organization: currentOrganization.value,
+    default_branch: currentBranch.value,
+    accessible_branches: accessibleBranches.value,
+    token: payload.token || payload.data?.token,
+  };
+  localStorage.setItem('hms_portal_session', JSON.stringify(sessionData));
+  if (sessionData.token) {
+    sessionStorage.setItem('hms_auth_token', sessionData.token);
+  }
+
+  currentView.value = getDefaultViewForRole(currentUser.value);
+
+  if (window.location.pathname === '/login') {
+    window.history.pushState({}, '', '/app');
+  }
+}
+
+async function handleSignOut() {
+  const token = sessionStorage.getItem('hms_auth_token');
+  try {
+    await fetch('/api/v1/auth/logout', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : '',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+      },
+    });
+  } catch (err) {
+    console.warn('Sign out request failed:', err);
+  } finally {
+    localStorage.removeItem('hms_portal_session');
+    sessionStorage.removeItem('hms_auth_token');
+    currentUser.value = null;
+    currentOrganization.value = null;
+    currentBranch.value = null;
+    accessibleBranches.value = [];
+    if (window.location.pathname !== '/login') {
+      window.history.pushState({}, '', '/login');
+    }
+  }
+}
+
+async function quickSwitchPersona(persona) {
+  switchingPersona.value = persona.role_key;
+  try {
+    const res = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+      },
+      body: JSON.stringify({
+        email: persona.email,
+        password: persona.password || 'password123',
+      }),
+    });
+    const data = await res.json();
+    if (res.ok && (data.user || data.data?.user)) {
+      handleLoginSuccess(data);
+      showPersonaModal.value = false;
+    }
+  } catch (err) {
+    console.error('Failed to switch persona:', err);
+  } finally {
+    switchingPersona.value = null;
+  }
+}
+
+onMounted(async () => {
   const impId = sessionStorage.getItem('hms_impersonation_id');
   const impHosp = sessionStorage.getItem('hms_impersonated_hospital');
   if (impId) {
@@ -681,6 +1177,63 @@ onMounted(() => {
         impersonatedHospitalName.value = 'Hospital Client';
       }
     }
+  }
+
+  // Load session from localStorage
+  const rawSession = localStorage.getItem('hms_portal_session');
+  if (rawSession) {
+    try {
+      const parsed = JSON.parse(rawSession);
+      if (parsed && parsed.user) {
+        currentUser.value = parsed.user;
+        currentOrganization.value = parsed.organization;
+        currentBranch.value = parsed.default_branch;
+        accessibleBranches.value = parsed.accessible_branches || [];
+        if (parsed.default_branch?.id) {
+          activeBranchId.value = parsed.default_branch.id;
+        } else if (accessibleBranches.value.length > 0) {
+          activeBranchId.value = accessibleBranches.value[0].id;
+        }
+
+        // Verify session with backend
+        const token = sessionStorage.getItem('hms_auth_token') || parsed.token;
+        fetch('/api/v1/auth/me', {
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : '',
+          }
+        }).then(res => res.json()).then(data => {
+          if (data.authenticated && data.user) {
+            currentUser.value = data.user;
+            if (data.organization) currentOrganization.value = data.organization;
+            if (data.default_branch) currentBranch.value = data.default_branch;
+            if (data.accessible_branches) accessibleBranches.value = data.accessible_branches;
+          } else if (data.authenticated === false) {
+            handleSignOut();
+          }
+        }).catch(() => {
+          // Keep local cached session on connection error
+        });
+      }
+    } catch {
+      localStorage.removeItem('hms_portal_session');
+    }
+  }
+
+  // Load demo personas for modal
+  try {
+    const res = await fetch('/api/v1/auth/demo-accounts');
+    const data = await res.json();
+    if (data.demo_accounts) {
+      demoPersonas.value = data.demo_accounts;
+    }
+  } catch (err) {
+    console.error('Failed to load demo accounts:', err);
+  }
+
+  // Ensure currentView is allowed for active role
+  if (currentUser.value && !canAccessView(currentView.value)) {
+    currentView.value = getDefaultViewForRole(currentUser.value);
   }
 });
 
