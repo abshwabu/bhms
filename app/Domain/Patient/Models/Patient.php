@@ -55,6 +55,7 @@ class Patient extends BaseModel
         'address' => 'array',
         'emergency_contact' => 'array',
         'is_active' => 'boolean',
+        'passport_number' => 'encrypted',
     ];
 
     protected $appends = [

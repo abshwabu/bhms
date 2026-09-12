@@ -13,7 +13,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            'rbac' => \App\Domain\Compliance\Http\Middleware\EnforceRbacPermissionMiddleware::class,
+            'permission' => \App\Domain\Compliance\Http\Middleware\EnforceRbacPermissionMiddleware::class,
+            'enforce.tls' => \App\Domain\Compliance\Http\Middleware\EnforceTlsMiddleware::class,
+            'audit.trail' => \App\Domain\Compliance\Http\Middleware\AuditTrailMiddleware::class,
+        ]);
+
+        $middleware->append(\App\Domain\Compliance\Http\Middleware\EnforceTlsMiddleware::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

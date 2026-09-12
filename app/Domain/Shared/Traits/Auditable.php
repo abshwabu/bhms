@@ -13,14 +13,16 @@ trait Auditable
     protected static function bootAuditable(): void
     {
         static::created(function ($model) {
-            static::recordAuditLog($model, 'created', null, $model->getAttributes());
+            $attrs = $model->getAttributes();
+            unset($attrs['password'], $attrs['remember_token']);
+            static::recordAuditLog($model, 'created', null, $attrs);
         });
 
         static::updated(function ($model) {
             $old = array_intersect_key($model->getOriginal(), $model->getDirty());
             $new = $model->getDirty();
             // Don't audit updated_at timestamp changes alone
-            unset($old['updated_at'], $new['updated_at']);
+            unset($old['updated_at'], $new['updated_at'], $old['password'], $new['password'], $old['remember_token'], $new['remember_token']);
 
             if (!empty($new)) {
                 static::recordAuditLog($model, 'updated', $old, $new);
@@ -28,7 +30,9 @@ trait Auditable
         });
 
         static::deleted(function ($model) {
-            static::recordAuditLog($model, 'deleted', $model->getOriginal(), null);
+            $orig = $model->getOriginal();
+            unset($orig['password'], $orig['remember_token']);
+            static::recordAuditLog($model, 'deleted', $orig, null);
         });
     }
 
@@ -50,11 +54,12 @@ trait Auditable
                 'user_id' => $userId,
                 'event' => $event,
                 'auditable_type' => get_class($model),
-                'auditable_id' => $model->getKey(),
-                'old_values' => $oldValues ? json_encode($oldValues) : null,
-                'new_values' => $newValues ? json_encode($newValues) : null,
+                'auditable_id' => (string) $model->getKey(),
+                'old_values' => $oldValues,
+                'new_values' => $newValues,
                 'ip_address' => request() ? request()->ip() : null,
                 'user_agent' => request() ? request()->userAgent() : null,
+                'created_at' => now(),
             ]);
         } catch (\Throwable $e) {
             // Silently log or ignore during migration/seeding if audit tables are not yet ready
