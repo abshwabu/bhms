@@ -98,6 +98,42 @@
             Referral Transfers
           </button>
 
+          <!-- Doctor & Clinical -->
+          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Doctor & Clinical</div>
+
+          <button
+            @click="currentView = 'doctor_dashboard'"
+            :class="currentView === 'doctor_dashboard' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Doctor Dashboard
+          </button>
+
+          <button
+            @click="navigateToEhrTimeline"
+            :class="currentView === 'ehr' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            EHR Clinical Records
+          </button>
+
+          <button
+            @click="navigateToPrescriptions"
+            :class="currentView === 'prescriptions' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+            </svg>
+            E-Prescribe & CDS
+          </button>
+
           <!-- Inpatient & IPD Management -->
           <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Inpatient & IPD</div>
 
@@ -242,6 +278,34 @@
         :branch-id="activeBranchId"
       />
 
+      <!-- Doctor & Clinical: Personal Dashboard -->
+      <DoctorDashboard
+        v-else-if="currentView === 'doctor_dashboard'"
+        :branch-id="activeBranchId"
+        @open-patient-ehr="handleOpenPatientEhr"
+        @open-prescription-writer="handleOpenPrescriptionWriter"
+        @open-order-modal="handleOpenOrderModal"
+      />
+
+      <!-- Doctor & Clinical: Longitudinal EHR Records -->
+      <EhrTimelineView
+        v-else-if="currentView === 'ehr' && selectedPatient"
+        :patient="selectedPatient"
+        :branch-id="activeBranchId"
+        @back="currentView = 'doctor_dashboard'"
+        @open-prescription-writer="handleOpenPrescriptionWriter"
+        @open-order-modal="handleOpenOrderModal"
+      />
+
+      <!-- Doctor & Clinical: E-Prescriptions & CDS Warnings -->
+      <PrescriptionWriter
+        v-else-if="currentView === 'prescriptions' && selectedPatient"
+        :patient="selectedPatient"
+        :branch-id="activeBranchId"
+        @back="currentView = 'ehr'"
+        @prescription-created="handlePrescriptionCreated"
+      />
+
       <!-- Patient Portal Self-Service View -->
       <div v-else-if="currentView === 'portal'" class="space-y-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
@@ -275,6 +339,17 @@
       @close="isRegistrationModalOpen = false"
       @patient-created="handlePatientCreated"
     />
+
+    <!-- Diagnostic Order Entry Modal (Lab & Radiology) -->
+    <OrderEntryModal
+      v-if="selectedPatient"
+      :is-open="isOrderModalOpen"
+      :initial-type="orderModalType"
+      :patient="selectedPatient"
+      :branch-id="activeBranchId"
+      @close="isOrderModalOpen = false"
+      @order-created="handleOrderCreated"
+    />
   </div>
 </template>
 
@@ -291,11 +366,17 @@ import BedMapVisualView from '../IPD/BedMapVisualView.vue';
 import NursingDashboard from '../IPD/NursingDashboard.vue';
 import DischargeSummaryGenerator from '../IPD/DischargeSummaryGenerator.vue';
 import IpdAnalyticsView from '../IPD/IpdAnalyticsView.vue';
+import DoctorDashboard from '../Clinical/DoctorDashboard.vue';
+import EhrTimelineView from '../Clinical/EhrTimelineView.vue';
+import PrescriptionWriter from '../Clinical/PrescriptionWriter.vue';
+import OrderEntryModal from '../Clinical/OrderEntryModal.vue';
 
 const activeBranchId = ref('b9ff561a-5396-4309-9b08-3e7b358310e9');
-const currentView = ref('search');
+const currentView = ref('doctor_dashboard');
 const selectedPatient = ref(null);
 const isRegistrationModalOpen = ref(false);
+const isOrderModalOpen = ref(false);
+const orderModalType = ref('lab');
 const searchScreenRef = ref(null);
 
 function openRegistrationModal() {
@@ -304,14 +385,66 @@ function openRegistrationModal() {
 
 function handleSelectPatient(patient) {
   selectedPatient.value = patient;
-  currentView.value = 'profile';
+  currentView.value = 'ehr';
 }
 
 function handlePatientCreated(patient) {
   selectedPatient.value = patient;
-  currentView.value = 'profile';
+  currentView.value = 'ehr';
   if (searchScreenRef.value) {
     searchScreenRef.value.fetchPatients();
+  }
+}
+
+function handleOpenPatientEhr(patient) {
+  selectedPatient.value = patient;
+  currentView.value = 'ehr';
+}
+
+function handleOpenPrescriptionWriter(patient) {
+  if (patient) selectedPatient.value = patient;
+  if (!selectedPatient.value) {
+    currentView.value = 'search';
+    return;
+  }
+  currentView.value = 'prescriptions';
+}
+
+function handleOpenOrderModal(payload) {
+  if (typeof payload === 'string') {
+    orderModalType.value = payload;
+  } else if (payload && payload.type) {
+    orderModalType.value = payload.type;
+    if (payload.patient) selectedPatient.value = payload.patient;
+  }
+  if (!selectedPatient.value) {
+    currentView.value = 'search';
+    return;
+  }
+  isOrderModalOpen.value = true;
+}
+
+function handleOrderCreated() {
+  // Can trigger refresh if timeline is active
+}
+
+function handlePrescriptionCreated() {
+  currentView.value = 'ehr';
+}
+
+function navigateToEhrTimeline() {
+  if (!selectedPatient.value) {
+    currentView.value = 'search';
+  } else {
+    currentView.value = 'ehr';
+  }
+}
+
+function navigateToPrescriptions() {
+  if (!selectedPatient.value) {
+    currentView.value = 'search';
+  } else {
+    currentView.value = 'prescriptions';
   }
 }
 </script>
