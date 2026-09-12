@@ -9,4 +9,5 @@ return [
     App\Domain\IPD\Providers\IpdDomainServiceProvider::class,
     App\Domain\Clinical\Providers\ClinicalDomainServiceProvider::class,
     App\Domain\Laboratory\Providers\LaboratoryDomainServiceProvider::class,
+    App\Domain\Radiology\Providers\RadiologyDomainServiceProvider::class,
 ];
