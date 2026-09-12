@@ -11,4 +11,5 @@ return [
     App\Domain\Laboratory\Providers\LaboratoryDomainServiceProvider::class,
     App\Domain\Radiology\Providers\RadiologyDomainServiceProvider::class,
     App\Domain\Pharmacy\Providers\PharmacyDomainServiceProvider::class,
+    App\Domain\Billing\Providers\BillingDomainServiceProvider::class,
 ];

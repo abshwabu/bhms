@@ -220,6 +220,20 @@
             Occupancy & ALOS Analytics
           </button>
 
+          <!-- Billing & Finance -->
+          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Billing & Finance</div>
+
+          <button
+            @click="currentView = 'billing'"
+            :class="currentView === 'billing' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            Billing & Invoicing
+          </button>
+
           <!-- Portals -->
           <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Portals</div>
 
@@ -363,6 +377,12 @@
         :branch-id="activeBranchId"
       />
 
+      <!-- Billing & Finance: Invoicing, Payments, Claims & Revenue Analytics -->
+      <BillingMasterView
+        v-else-if="currentView === 'billing'"
+        :branch-id="activeBranchId"
+      />
+
       <!-- Patient Portal Self-Service View -->
       <div v-else-if="currentView === 'portal'" class="space-y-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
@@ -383,7 +403,9 @@
           <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-2">
             <h3 class="font-bold text-slate-800">Billing & Insurance</h3>
             <p class="text-xs text-slate-500">Inpatient room rates, copays, and claims.</p>
-            <div class="pt-4 text-xs font-semibold text-blue-600">View Invoices &rarr;</div>
+            <button @click="currentView = 'billing'" class="pt-4 text-xs font-semibold text-blue-600 hover:underline cursor-pointer block text-left">
+              View Invoices &rarr;
+            </button>
           </div>
         </div>
       </div>
@@ -430,6 +452,7 @@ import OrderEntryModal from '../Clinical/OrderEntryModal.vue';
 import LabWorklist from '../Laboratory/LabWorklist.vue';
 import ImagingWorklist from '../Radiology/ImagingWorklist.vue';
 import PharmacyMasterView from '../Pharmacy/PharmacyMasterView.vue';
+import BillingMasterView from '../Billing/BillingMasterView.vue';
 
 const activeBranchId = ref('b9ff561a-5396-4309-9b08-3e7b358310e9');
 const currentView = ref('doctor_dashboard');
