@@ -26,7 +26,8 @@
         </div>
 
         <!-- Navigation Links -->
-        <nav class="p-4 space-y-1.5">
+        <nav class="p-4 space-y-1.5 overflow-y-auto max-h-[calc(100vh-160px)]">
+          <!-- Patient Records -->
           <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 font-bold">Patient Records</div>
           
           <button
@@ -50,6 +51,7 @@
             Register Walk-In / Referral
           </button>
 
+          <!-- Appointment & OPD -->
           <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Appointment & OPD</div>
 
           <button
@@ -96,6 +98,54 @@
             Referral Transfers
           </button>
 
+          <!-- Inpatient & IPD Management -->
+          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Inpatient & IPD</div>
+
+          <button
+            @click="currentView = 'bed_map'"
+            :class="currentView === 'bed_map' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+            </svg>
+            Bed Map & Ward View
+          </button>
+
+          <button
+            @click="currentView = 'nursing'"
+            :class="currentView === 'nursing' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+            </svg>
+            Nursing Station (Vitals/Meds)
+          </button>
+
+          <button
+            @click="currentView = 'discharge'"
+            :class="currentView === 'discharge' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Discharge Summary
+          </button>
+
+          <button
+            @click="currentView = 'ipd_analytics'"
+            :class="currentView === 'ipd_analytics' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Occupancy & ALOS Analytics
+          </button>
+
+          <!-- Portals -->
           <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Portals</div>
 
           <button
@@ -168,6 +218,30 @@
         :branch-id="activeBranchId"
       />
 
+      <!-- Inpatient: Bed Map & Ward Allocation -->
+      <BedMapVisualView
+        v-else-if="currentView === 'bed_map'"
+        :branch-id="activeBranchId"
+      />
+
+      <!-- Inpatient: Nursing Station -->
+      <NursingDashboard
+        v-else-if="currentView === 'nursing'"
+        :branch-id="activeBranchId"
+      />
+
+      <!-- Inpatient: Discharge Summary Generator -->
+      <DischargeSummaryGenerator
+        v-else-if="currentView === 'discharge'"
+        :branch-id="activeBranchId"
+      />
+
+      <!-- Inpatient: Bed Occupancy & ALOS Analytics -->
+      <IpdAnalyticsView
+        v-else-if="currentView === 'ipd_analytics'"
+        :branch-id="activeBranchId"
+      />
+
       <!-- Patient Portal Self-Service View -->
       <div v-else-if="currentView === 'portal'" class="space-y-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
@@ -182,13 +256,13 @@
           </div>
           <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-2">
             <h3 class="font-bold text-slate-800">My Medical Records</h3>
-            <p class="text-xs text-slate-500">SOAP notes, lab results, and diagnosed allergies.</p>
+            <p class="text-xs text-slate-500">Inpatient summaries, SOAP notes, and lab results.</p>
             <div class="pt-4 text-xs font-semibold text-blue-600">View Diagnostic History &rarr;</div>
           </div>
           <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-2">
             <h3 class="font-bold text-slate-800">Billing & Insurance</h3>
-            <p class="text-xs text-slate-500">Active copays, HMO claims, and payment receipts.</p>
-            <div class="pt-4 text-xs font-semibold text-blue-600">View Invoices ($0.00 Due) &rarr;</div>
+            <p class="text-xs text-slate-500">Inpatient room rates, copays, and claims.</p>
+            <div class="pt-4 text-xs font-semibold text-blue-600">View Invoices &rarr;</div>
           </div>
         </div>
       </div>
@@ -213,8 +287,12 @@ import BookingCalendar from '../OPD/BookingCalendar.vue';
 import QueueDashboard from '../OPD/QueueDashboard.vue';
 import SoapNoteEditor from '../OPD/SoapNoteEditor.vue';
 import ReferralManager from '../OPD/ReferralManager.vue';
+import BedMapVisualView from '../IPD/BedMapVisualView.vue';
+import NursingDashboard from '../IPD/NursingDashboard.vue';
+import DischargeSummaryGenerator from '../IPD/DischargeSummaryGenerator.vue';
+import IpdAnalyticsView from '../IPD/IpdAnalyticsView.vue';
 
-const activeBranchId = ref('b9ff561a-5396-4309-9b08-3e7b358310e9'); // Dynamic branch ID
+const activeBranchId = ref('b9ff561a-5396-4309-9b08-3e7b358310e9');
 const currentView = ref('search');
 const selectedPatient = ref(null);
 const isRegistrationModalOpen = ref(false);
