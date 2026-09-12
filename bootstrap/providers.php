@@ -19,4 +19,5 @@ return [
     App\Domain\Compliance\Providers\ComplianceDomainServiceProvider::class,
     App\Domain\Administration\Providers\AdministrationDomainServiceProvider::class,
     App\Domain\Telegram\Providers\TelegramReportingDomainServiceProvider::class,
+    App\Domain\Marketing\Providers\MarketingDomainServiceProvider::class,
 ];
