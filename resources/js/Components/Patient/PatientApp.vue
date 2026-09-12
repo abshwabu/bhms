@@ -234,6 +234,20 @@
             Billing & Invoicing
           </button>
 
+          <!-- Materials & Asset Management -->
+          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Materials & Assets</div>
+
+          <button
+            @click="currentView = 'inventory'"
+            :class="currentView === 'inventory' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+            Inventory & Equipment
+          </button>
+
           <!-- Portals -->
           <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Portals</div>
 
@@ -383,6 +397,12 @@
         :branch-id="activeBranchId"
       />
 
+      <!-- Materials & Asset Management: Stock, POs & Equipment Maintenance -->
+      <InventoryMasterView
+        v-else-if="currentView === 'inventory'"
+        :branch-id="activeBranchId"
+      />
+
       <!-- Patient Portal Self-Service View -->
       <div v-else-if="currentView === 'portal'" class="space-y-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
@@ -453,6 +473,7 @@ import LabWorklist from '../Laboratory/LabWorklist.vue';
 import ImagingWorklist from '../Radiology/ImagingWorklist.vue';
 import PharmacyMasterView from '../Pharmacy/PharmacyMasterView.vue';
 import BillingMasterView from '../Billing/BillingMasterView.vue';
+import InventoryMasterView from '../Inventory/InventoryMasterView.vue';
 
 const activeBranchId = ref('b9ff561a-5396-4309-9b08-3e7b358310e9');
 const currentView = ref('doctor_dashboard');
