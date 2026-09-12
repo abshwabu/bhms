@@ -38,8 +38,8 @@
       "operatingSystem": "Cloud / Web-based",
       "offers": {
         "@@type": "Offer",
-        "price": "499.00",
-        "priceCurrency": "USD"
+        "price": "65000.00",
+        "priceCurrency": "ETB"
       },
       "description": "Comprehensive, multi-branch Hospital Management System featuring patient registry, clinical EHR, IPD bed management, pharmacy dispensing, billing, and real-time Telegram operational digests.",
       "featureList": [
@@ -322,7 +322,7 @@
                                         <p>&bull; Active Emergency ER: <b>5</b></p>
                                     </div>
                                     <div class="border-t border-slate-700/60 pt-1.5 space-y-1 text-[11px]">
-                                        <p>💰 <b>Revenue Invoiced:</b> $12,450.00</p>
+                                        <p>💰 <b>Revenue Invoiced:</b> ETB 1,650,000.00</p>
                                         <p>💊 <b>Low Stock Items:</b> 2 (Atropine, Normal Saline)</p>
                                     </div>
                                     <div class="text-[9px] text-slate-400 pt-1 text-right">Delivered via Metro HMS Bot ✓✓</div>
@@ -657,7 +657,7 @@
                     Predictable Pricing For Hospitals of Any Scale
                 </h2>
                 <p class="text-slate-400 text-sm sm:text-base mt-2">
-                    Transparent annual or monthly licensing with zero hidden fees. Dedicated on-site migration and 24/7 technical support included.
+                    Transparent annual or monthly licensing in Ethiopian Birr (ETB) with zero hidden fees. Dedicated on-site migration and 24/7 technical support included.
                 </p>
             </div>
 
@@ -666,8 +666,8 @@
                 <div class="p-8 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col justify-between">
                     <div>
                         <div class="text-sm font-bold text-slate-400 uppercase tracking-wider">Community Clinic</div>
-                        <div class="mt-4 flex items-baseline gap-1">
-                            <span class="text-4xl font-black text-white">$499</span>
+                        <div class="mt-4 flex items-baseline gap-1.5">
+                            <span class="text-3xl sm:text-4xl font-black text-white">ETB 65,000</span>
                             <span class="text-xs text-slate-400">/ month</span>
                         </div>
                         <p class="text-xs text-slate-400 mt-2">Perfect for regional medical clinics and community facilities up to 50 beds.</p>
@@ -696,8 +696,8 @@
                     </div>
                     <div>
                         <div class="text-sm font-bold text-sky-400 uppercase tracking-wider">Regional Medical Center</div>
-                        <div class="mt-4 flex items-baseline gap-1">
-                            <span class="text-4xl font-black text-white">$1,299</span>
+                        <div class="mt-4 flex items-baseline gap-1.5">
+                            <span class="text-3xl sm:text-4xl font-black text-white">ETB 169,000</span>
                             <span class="text-xs text-slate-400">/ month</span>
                         </div>
                         <p class="text-xs text-slate-400 mt-2">Comprehensive operational suite for acute care hospitals up to 250 beds.</p>
@@ -723,8 +723,9 @@
                 <div class="p-8 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col justify-between">
                     <div>
                         <div class="text-sm font-bold text-slate-400 uppercase tracking-wider">Multi-Branch Enterprise</div>
-                        <div class="mt-4 flex items-baseline gap-1">
-                            <span class="text-4xl font-black text-white">Custom</span>
+                        <div class="mt-4 flex items-baseline gap-1.5">
+                            <span class="text-3xl sm:text-4xl font-black text-white">Custom</span>
+                            <span class="text-xs text-slate-400">ETB quote</span>
                         </div>
                         <p class="text-xs text-slate-400 mt-2">Federated multi-tenant architecture for hospital chains and university medical groups.</p>
 
@@ -1189,7 +1190,7 @@
                         <p>&bull; Active Emergency ER: <b>5</b></p>
                     </div>
                     <div class="border-t border-slate-700/60 pt-1.5 space-y-1 text-[11px]">
-                        <p>💰 <b>Revenue Invoiced:</b> $12,450.00</p>
+                        <p>💰 <b>Revenue Invoiced:</b> ETB 1,650,000.00</p>
                         <p>💊 <b>Low Stock Items:</b> 2 (Atropine, Normal Saline)</p>
                     </div>
                     <div class="text-[9px] text-slate-400 pt-1 text-right">Delivered via Metro HMS Bot ✓✓</div>
@@ -1416,7 +1417,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                         <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
                             <div class="text-slate-400 text-[11px]">Monthly Gross Billings</div>
-                            <div class="text-2xl font-bold text-white mt-1">$482,900</div>
+                            <div class="text-2xl font-bold text-white mt-1">ETB 48,290,000</div>
                             <div class="text-emerald-400 text-[10px] mt-1">↑ 12.4% vs previous month</div>
                         </div>
                         <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">

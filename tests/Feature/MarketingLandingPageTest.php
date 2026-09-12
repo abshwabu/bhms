@@ -51,6 +51,9 @@ class MarketingLandingPageTest extends TestCase
         // Pricing & FAQ
         $response->assertSee('Predictable Pricing For Hospitals', false);
         $response->assertSee('Regional Medical Center', false);
+        $response->assertSee('ETB 65,000', false);
+        $response->assertSee('ETB 169,000', false);
+        $response->assertSee('Ethiopian Birr (ETB)', false);
         $response->assertSee('Frequently Asked Questions', false);
 
         // Demo Request Form
