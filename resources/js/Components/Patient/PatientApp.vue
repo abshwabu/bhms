@@ -307,6 +307,18 @@
             Compliance & Security
           </button>
 
+          <button
+            @click="currentView = 'admin'"
+            :class="currentView === 'admin' ? 'bg-cyan-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            System Administration
+          </button>
+
           <!-- Portals -->
           <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Portals</div>
 
@@ -486,6 +498,12 @@
         :branch-id="activeBranchId"
       />
 
+      <!-- System Administration: Multi-Branch, Master Data, Notifications & Disaster Recovery -->
+      <AdministrationMasterView
+        v-else-if="currentView === 'admin'"
+        :branch-id="activeBranchId"
+      />
+
       <!-- Patient Portal Self-Service View -->
       <div v-else-if="currentView === 'portal'" class="space-y-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
@@ -561,6 +579,7 @@ import HrMasterView from '../HR/HrMasterView.vue';
 import EmergencyMasterView from '../Emergency/EmergencyMasterView.vue';
 import ReportsMasterView from '../Reports/ReportsMasterView.vue';
 import ComplianceMasterView from '../Compliance/ComplianceMasterView.vue';
+import AdministrationMasterView from '../Administration/AdministrationMasterView.vue';
 
 const activeBranchId = ref('b9ff561a-5396-4309-9b08-3e7b358310e9');
 const currentView = ref('doctor_dashboard');
