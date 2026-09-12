@@ -248,6 +248,20 @@
             Inventory & Equipment
           </button>
 
+          <!-- Human Resources & Staff Management -->
+          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Staff & Rostering</div>
+
+          <button
+            @click="currentView = 'hr'"
+            :class="currentView === 'hr' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            HR & Staff Management
+          </button>
+
           <!-- Portals -->
           <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Portals</div>
 
@@ -403,6 +417,12 @@
         :branch-id="activeBranchId"
       />
 
+      <!-- Human Resources & Staff Management: Rosters, Attendance, Leaves & Credentials -->
+      <HrMasterView
+        v-else-if="currentView === 'hr'"
+        :branch-id="activeBranchId"
+      />
+
       <!-- Patient Portal Self-Service View -->
       <div v-else-if="currentView === 'portal'" class="space-y-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
@@ -474,6 +494,7 @@ import ImagingWorklist from '../Radiology/ImagingWorklist.vue';
 import PharmacyMasterView from '../Pharmacy/PharmacyMasterView.vue';
 import BillingMasterView from '../Billing/BillingMasterView.vue';
 import InventoryMasterView from '../Inventory/InventoryMasterView.vue';
+import HrMasterView from '../HR/HrMasterView.vue';
 
 const activeBranchId = ref('b9ff561a-5396-4309-9b08-3e7b358310e9');
 const currentView = ref('doctor_dashboard');

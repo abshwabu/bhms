@@ -13,4 +13,5 @@ return [
     App\Domain\Pharmacy\Providers\PharmacyDomainServiceProvider::class,
     App\Domain\Billing\Providers\BillingDomainServiceProvider::class,
     App\Domain\Inventory\Providers\InventoryDomainServiceProvider::class,
+    App\Domain\HR\Providers\HrDomainServiceProvider::class,
 ];
