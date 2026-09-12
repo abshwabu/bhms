@@ -51,6 +51,23 @@
             Register Walk-In / Referral
           </button>
 
+          <!-- Emergency & Ambulance (ER / EMS) -->
+          <div class="text-[10px] font-mono uppercase tracking-wider text-rose-500 px-3 py-1 mt-3 font-bold flex items-center justify-between">
+            <span>Emergency & Trauma</span>
+            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+          </div>
+
+          <button
+            @click="currentView = 'emergency'"
+            :class="currentView === 'emergency' ? 'bg-rose-600 text-white font-semibold shadow-sm' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            ER Triage & Ambulance CAD
+          </button>
+
           <!-- Appointment & OPD -->
           <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Appointment & OPD</div>
 
@@ -423,6 +440,12 @@
         :branch-id="activeBranchId"
       />
 
+      <!-- Emergency & Ambulance: ER Triage, Resuscitation Queue & Ambulance CAD -->
+      <EmergencyMasterView
+        v-else-if="currentView === 'emergency'"
+        :branch-id="activeBranchId"
+      />
+
       <!-- Patient Portal Self-Service View -->
       <div v-else-if="currentView === 'portal'" class="space-y-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
@@ -495,6 +518,7 @@ import PharmacyMasterView from '../Pharmacy/PharmacyMasterView.vue';
 import BillingMasterView from '../Billing/BillingMasterView.vue';
 import InventoryMasterView from '../Inventory/InventoryMasterView.vue';
 import HrMasterView from '../HR/HrMasterView.vue';
+import EmergencyMasterView from '../Emergency/EmergencyMasterView.vue';
 
 const activeBranchId = ref('b9ff561a-5396-4309-9b08-3e7b358310e9');
 const currentView = ref('doctor_dashboard');
