@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 Route::post('api/v1/telegram/webhook', [TelegramWebhookController::class, 'handle'])->name('telegram.webhook.v1');
 Route::post('api/telegram/webhook', [TelegramWebhookController::class, 'handle'])->name('telegram.webhook');
 
-Route::prefix('api/v1/telegram')->middleware(['api'])->group(function () {
+Route::prefix('api/v1/telegram')->middleware(['api', 'feature:telegram_reporting'])->group(function () {
     // 1. Channel Registry & Configuration
     Route::get('/channels', [TelegramChannelController::class, 'index'])->name('telegram.channels.index');
     Route::post('/channels', [TelegramChannelController::class, 'store'])->name('telegram.channels.store');

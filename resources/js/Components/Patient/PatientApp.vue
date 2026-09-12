@@ -1,7 +1,42 @@
 <template>
-  <div class="min-h-screen bg-slate-100/70 font-sans text-slate-800 flex">
-    <!-- Sidebar Navigation -->
-    <aside class="w-64 bg-slate-900 text-white flex flex-col justify-between shrink-0 shadow-xl">
+  <div class="min-h-screen bg-slate-100/70 font-sans text-slate-800 flex flex-col">
+    <!-- Persistent Support Impersonation Banner -->
+    <div
+      v-if="isImpersonating"
+      class="bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 text-white px-6 py-2.5 shadow-md flex items-center justify-between gap-4 z-40 shrink-0 border-b border-amber-500/50"
+    >
+      <div class="flex items-center gap-3">
+        <div class="w-7 h-7 rounded-lg bg-amber-500/40 flex items-center justify-center animate-pulse">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div>
+          <div class="text-xs font-black tracking-wide uppercase flex items-center gap-2">
+            <span>Vendor Support Impersonation Active</span>
+            <span class="px-2 py-0.5 bg-black/30 rounded text-[10px] font-mono font-normal">Audit Logged</span>
+          </div>
+          <div class="text-[11px] text-amber-100">
+            Viewing tenant: <strong>{{ impersonatedHospitalName }}</strong> (Session active). All actions are recorded.
+          </div>
+        </div>
+      </div>
+
+      <button
+        @click="exitImpersonation"
+        :disabled="exitingImpersonation"
+        class="px-4 py-1.5 bg-white hover:bg-amber-50 active:bg-amber-100 text-amber-900 rounded-lg text-xs font-black transition cursor-pointer shadow-sm disabled:opacity-50 flex items-center gap-1.5 shrink-0"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+        <span>{{ exitingImpersonation ? 'Exiting...' : 'Exit Impersonation' }}</span>
+      </button>
+    </div>
+
+    <div class="flex-1 flex overflow-hidden">
+      <!-- Sidebar Navigation -->
+      <aside class="w-64 bg-slate-900 text-white flex flex-col justify-between shrink-0 shadow-xl">
       <div>
         <!-- Brand Header -->
         <div class="p-6 border-b border-slate-800">
@@ -330,6 +365,20 @@
             System Administration
           </button>
 
+          <!-- Platform Operator Root -->
+          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Platform Vendor</div>
+
+          <button
+            @click="currentView = 'super_admin'"
+            :class="currentView === 'super_admin' ? 'bg-indigo-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            Super Admin Platform
+          </button>
+
           <!-- Portals -->
           <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold">Portals</div>
 
@@ -521,6 +570,11 @@
         :branch-id="activeBranchId"
       />
 
+      <!-- Super Admin Platform Control Plane -->
+      <SuperAdminMasterView
+        v-else-if="currentView === 'super_admin'"
+      />
+
       <!-- Patient Portal Self-Service View -->
       <div v-else-if="currentView === 'portal'" class="space-y-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
@@ -567,11 +621,12 @@
       @close="isOrderModalOpen = false"
       @order-created="handleOrderCreated"
     />
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import PatientSearchScreen from './PatientSearchScreen.vue';
 import PatientProfileView from './PatientProfileView.vue';
 import RegistrationModal from './RegistrationModal.vue';
@@ -598,6 +653,7 @@ import ReportsMasterView from '../Reports/ReportsMasterView.vue';
 import ComplianceMasterView from '../Compliance/ComplianceMasterView.vue';
 import AdministrationMasterView from '../Administration/AdministrationMasterView.vue';
 import TelegramManagementView from '../Telegram/TelegramManagementView.vue';
+import SuperAdminMasterView from '../SuperAdmin/SuperAdminMasterView.vue';
 
 const activeBranchId = ref('b9ff561a-5396-4309-9b08-3e7b358310e9');
 const currentView = ref('doctor_dashboard');
@@ -606,6 +662,55 @@ const isRegistrationModalOpen = ref(false);
 const isOrderModalOpen = ref(false);
 const orderModalType = ref('lab');
 const searchScreenRef = ref(null);
+
+// Support Impersonation State
+const isImpersonating = ref(false);
+const impersonatedHospitalName = ref('');
+const exitingImpersonation = ref(false);
+
+onMounted(() => {
+  const impId = sessionStorage.getItem('hms_impersonation_id');
+  const impHosp = sessionStorage.getItem('hms_impersonated_hospital');
+  if (impId) {
+    isImpersonating.value = true;
+    if (impHosp) {
+      try {
+        const h = JSON.parse(impHosp);
+        impersonatedHospitalName.value = h.name || 'Hospital Client';
+      } catch {
+        impersonatedHospitalName.value = 'Hospital Client';
+      }
+    }
+  }
+});
+
+async function exitImpersonation() {
+  const impId = sessionStorage.getItem('hms_impersonation_id');
+  exitingImpersonation.value = true;
+  try {
+    if (impId) {
+      await fetch('/api/v1/super-admin/impersonation/stop', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+        body: JSON.stringify({ impersonation_id: impId })
+      });
+    }
+  } catch (err) {
+    console.error('Failed to gracefully exit impersonation:', err);
+  } finally {
+    sessionStorage.removeItem('hms_impersonation_id');
+    sessionStorage.removeItem('hms_impersonation_token');
+    sessionStorage.removeItem('hms_impersonated_hospital');
+    sessionStorage.removeItem('hms_impersonation_expires');
+    isImpersonating.value = false;
+    exitingImpersonation.value = false;
+    window.location.reload();
+  }
+}
 
 function openRegistrationModal() {
   isRegistrationModalOpen.value = true;

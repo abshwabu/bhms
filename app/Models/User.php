@@ -34,6 +34,7 @@ class User extends Authenticatable
         'password',
         'is_active',
         'is_patient',
+        'is_super_admin',
     ];
 
     protected $hidden = [
@@ -48,6 +49,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'is_patient' => 'boolean',
+            'is_super_admin' => 'boolean',
         ];
     }
 

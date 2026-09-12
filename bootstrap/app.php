@@ -18,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \App\Domain\Compliance\Http\Middleware\EnforceRbacPermissionMiddleware::class,
             'enforce.tls' => \App\Domain\Compliance\Http\Middleware\EnforceTlsMiddleware::class,
             'audit.trail' => \App\Domain\Compliance\Http\Middleware\AuditTrailMiddleware::class,
+            'super_admin' => \App\Domain\SuperAdmin\Http\Middleware\EnsureSuperAdmin::class,
+            'feature' => \App\Domain\SuperAdmin\Http\Middleware\CheckTenantFeatureFlag::class,
         ]);
 
         $middleware->append(\App\Domain\Compliance\Http\Middleware\EnforceTlsMiddleware::class);

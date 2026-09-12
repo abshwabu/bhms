@@ -20,4 +20,5 @@ return [
     App\Domain\Administration\Providers\AdministrationDomainServiceProvider::class,
     App\Domain\Telegram\Providers\TelegramReportingDomainServiceProvider::class,
     App\Domain\Marketing\Providers\MarketingDomainServiceProvider::class,
+    App\Domain\SuperAdmin\Providers\SuperAdminDomainServiceProvider::class,
 ];

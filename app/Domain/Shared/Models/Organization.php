@@ -14,11 +14,16 @@ class Organization extends BaseModel
         'tax_number',
         'settings',
         'is_active',
+        'plan_tier',
+        'subscription_status',
+        'suspended_at',
+        'suspension_reason',
     ];
 
     protected $casts = [
         'settings' => 'array',
         'is_active' => 'boolean',
+        'suspended_at' => 'datetime',
     ];
 
     public function branches(): HasMany
