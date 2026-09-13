@@ -41,8 +41,22 @@ class BranchScopeMiddleware
                 );
             }
 
+            // Bind current branch and organization to container
+            app()->instance('current_branch_id', $branch->id);
+            app()->instance('current_organization_id', $branch->organization_id);
+
+            // Set Spatie Permissions Team Context to Branch ID before any role checks
+            if (function_exists('setPermissionsTeamId')) {
+                setPermissionsTeamId($branch->id);
+            }
+
+            if ($user) {
+                $user->unsetRelation('roles')->unsetRelation('permissions');
+            }
+
             // If user is authenticated and not super_admin, check branch authorization
-            if ($user && method_exists($user, 'hasRole') && !$user->hasRole('super_admin')) {
+            $isSuperAdmin = ($user && ($user->is_super_admin || (method_exists($user, 'hasRole') && $user->hasRole('super_admin'))));
+            if ($user && !$isSuperAdmin) {
                 $hasAccess = $user->branches()->where('branches.id', $branchId)->exists();
                 if (!$hasAccess && $user->default_branch_id !== $branchId) {
                     return ApiResponse::error(
@@ -52,15 +66,6 @@ class BranchScopeMiddleware
                         403
                     );
                 }
-            }
-
-            // Bind current branch and organization to container
-            app()->instance('current_branch_id', $branch->id);
-            app()->instance('current_organization_id', $branch->organization_id);
-
-            // Set Spatie Permissions Team Context to Branch ID
-            if (function_exists('setPermissionsTeamId')) {
-                setPermissionsTeamId($branch->id);
             }
         }
 

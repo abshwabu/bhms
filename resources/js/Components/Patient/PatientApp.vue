@@ -1055,6 +1055,9 @@ function handleBranchChange(branchId) {
   if (found) {
     currentBranch.value = found;
   }
+  if (window.axios) {
+    window.axios.defaults.headers.common['X-Branch-ID'] = branchId;
+  }
 }
 
 function handleLoginSuccess(payload) {
@@ -1070,16 +1073,23 @@ function handleLoginSuccess(payload) {
     currentBranch.value = accessibleBranches.value[0];
   }
 
+  const token = payload.token || payload.data?.token;
   const sessionData = {
     user: currentUser.value,
     organization: currentOrganization.value,
     default_branch: currentBranch.value,
     accessible_branches: accessibleBranches.value,
-    token: payload.token || payload.data?.token,
+    token: token,
   };
   localStorage.setItem('hms_portal_session', JSON.stringify(sessionData));
-  if (sessionData.token) {
-    sessionStorage.setItem('hms_auth_token', sessionData.token);
+  if (token) {
+    sessionStorage.setItem('hms_auth_token', token);
+    if (window.axios) {
+      window.axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    }
+  }
+  if (activeBranchId.value && window.axios) {
+    window.axios.defaults.headers.common['X-Branch-ID'] = activeBranchId.value;
   }
 
   currentView.value = getDefaultViewForRole(currentUser.value);
@@ -1092,19 +1102,25 @@ function handleLoginSuccess(payload) {
 async function handleSignOut() {
   const token = sessionStorage.getItem('hms_auth_token');
   try {
-    await fetch('/api/v1/auth/logout', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': token ? `Bearer ${token}` : '',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-      },
-    });
+    if (token) {
+      await fetch('/api/v1/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+      });
+    }
   } catch (err) {
     console.warn('Sign out request failed:', err);
   } finally {
     localStorage.removeItem('hms_portal_session');
     sessionStorage.removeItem('hms_auth_token');
+    if (window.axios) {
+      delete window.axios.defaults.headers.common['Authorization'];
+      delete window.axios.defaults.headers.common['X-Branch-ID'];
+    }
     currentUser.value = null;
     currentOrganization.value = null;
     currentBranch.value = null;
@@ -1143,6 +1159,10 @@ async function quickSwitchPersona(persona) {
 }
 
 onMounted(async () => {
+  window.addEventListener('hms:unauthorized', () => {
+    handleSignOut();
+  });
+
   const impId = sessionStorage.getItem('hms_impersonation_id');
   const impHosp = sessionStorage.getItem('hms_impersonated_hospital');
   if (impId) {
@@ -1157,12 +1177,12 @@ onMounted(async () => {
     }
   }
 
-  // Load session from localStorage
+  // Load session from localStorage only if token exists
   const rawSession = localStorage.getItem('hms_portal_session');
   if (rawSession) {
     try {
       const parsed = JSON.parse(rawSession);
-      if (parsed && parsed.user) {
+      if (parsed && parsed.user && parsed.token) {
         currentUser.value = parsed.user;
         currentOrganization.value = parsed.organization;
         currentBranch.value = parsed.default_branch;
@@ -1173,28 +1193,45 @@ onMounted(async () => {
           activeBranchId.value = accessibleBranches.value[0].id;
         }
 
+        sessionStorage.setItem('hms_auth_token', parsed.token);
+        if (window.axios) {
+          window.axios.defaults.headers.common['Authorization'] = `Bearer ${parsed.token}`;
+          if (activeBranchId.value) {
+            window.axios.defaults.headers.common['X-Branch-ID'] = activeBranchId.value;
+          }
+        }
+
         // Verify session with backend
-        const token = sessionStorage.getItem('hms_auth_token') || parsed.token;
         fetch('/api/v1/auth/me', {
           headers: {
             'Accept': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : '',
+            'Authorization': `Bearer ${parsed.token}`,
           }
-        }).then(res => res.json()).then(data => {
-          if (data.authenticated && data.user) {
+        }).then(res => {
+          if (!res.ok || res.status === 401) {
+            handleSignOut();
+            return null;
+          }
+          return res.json();
+        }).then(data => {
+          if (data && data.authenticated && data.user) {
             currentUser.value = data.user;
             if (data.organization) currentOrganization.value = data.organization;
             if (data.default_branch) currentBranch.value = data.default_branch;
             if (data.accessible_branches) accessibleBranches.value = data.accessible_branches;
-          } else if (data.authenticated === false) {
+          } else if (data && data.authenticated === false) {
             handleSignOut();
           }
         }).catch(() => {
           // Keep local cached session on connection error
         });
+      } else {
+        localStorage.removeItem('hms_portal_session');
+        sessionStorage.removeItem('hms_auth_token');
       }
     } catch {
       localStorage.removeItem('hms_portal_session');
+      sessionStorage.removeItem('hms_auth_token');
     }
   }
 

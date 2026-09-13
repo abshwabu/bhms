@@ -13,6 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->statefulApi();
+
         $middleware->alias([
             'rbac' => \App\Domain\Compliance\Http\Middleware\EnforceRbacPermissionMiddleware::class,
             'permission' => \App\Domain\Compliance\Http\Middleware\EnforceRbacPermissionMiddleware::class,

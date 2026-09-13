@@ -1,3 +1,4 @@
+import './bootstrap';
 import { createApp } from 'vue';
 import PatientApp from './Components/Patient/PatientApp.vue';
 
