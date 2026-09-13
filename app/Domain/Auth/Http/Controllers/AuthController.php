@@ -84,7 +84,8 @@ class AuthController extends Controller
             ], 401);
         }
 
-        $formatted = $this->authService->formatUserData($user);
+        $branchId = $request->header('X-Branch-ID') ?: $user->default_branch_id;
+        $formatted = $this->authService->formatUserData($user, null, $branchId);
 
         return response()->json([
             'authenticated' => true,

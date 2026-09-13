@@ -1206,6 +1206,7 @@ onMounted(async () => {
           headers: {
             'Accept': 'application/json',
             'Authorization': `Bearer ${parsed.token}`,
+            'X-Branch-ID': activeBranchId.value || '',
           }
         }).then(res => {
           if (!res.ok || res.status === 401) {
@@ -1215,10 +1216,25 @@ onMounted(async () => {
           return res.json();
         }).then(data => {
           if (data && data.authenticated && data.user) {
+            // Ensure roles array is not cleared if backend returns empty
+            if ((!data.user.roles || data.user.roles.length === 0) && parsed.user?.roles?.length > 0) {
+              data.user.roles = parsed.user.roles;
+              data.user.primary_role = parsed.user.primary_role;
+            }
             currentUser.value = data.user;
             if (data.organization) currentOrganization.value = data.organization;
             if (data.default_branch) currentBranch.value = data.default_branch;
             if (data.accessible_branches) accessibleBranches.value = data.accessible_branches;
+
+            // Keep updated session in storage
+            const sessionData = {
+              user: data.user,
+              organization: currentOrganization.value,
+              default_branch: currentBranch.value,
+              accessible_branches: accessibleBranches.value,
+              token: parsed.token,
+            };
+            localStorage.setItem('hms_portal_session', JSON.stringify(sessionData));
           } else if (data && data.authenticated === false) {
             handleSignOut();
           }

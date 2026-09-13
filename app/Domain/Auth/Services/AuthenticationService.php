@@ -50,15 +50,38 @@ class AuthenticationService
     /**
      * Format comprehensive user profile including hospital, branch, roles, and permissions.
      */
-    public function formatUserData(User $user, ?string $token = null): array
+    public function formatUserData(User $user, ?string $token = null, ?string $branchId = null): array
     {
-        $user->loadMissing(['organization', 'defaultBranch', 'branches', 'roles.permissions']);
+        $targetBranchId = $branchId ?: $user->default_branch_id;
 
-        if (function_exists('setPermissionsTeamId') && $user->default_branch_id) {
-            setPermissionsTeamId($user->default_branch_id);
+        if (function_exists('setPermissionsTeamId') && $targetBranchId) {
+            setPermissionsTeamId($targetBranchId);
         }
 
+        $user->unsetRelation('roles')->unsetRelation('permissions');
+        $user->loadMissing(['organization', 'defaultBranch', 'branches', 'roles.permissions']);
+
         $roles = $user->roles->pluck('name')->all();
+
+        // Fallback check across user's assigned branches if roles is empty
+        if (empty($roles) && !$user->is_super_admin && $user->branches->isNotEmpty()) {
+            foreach ($user->branches as $branch) {
+                if (function_exists('setPermissionsTeamId')) {
+                    setPermissionsTeamId($branch->id);
+                }
+                $user->unsetRelation('roles')->unsetRelation('permissions');
+                $branchRoles = $user->roles->pluck('name')->all();
+                if (!empty($branchRoles)) {
+                    $roles = array_values(array_unique(array_merge($roles, $branchRoles)));
+                }
+            }
+            // Reset team ID to target branch
+            if (function_exists('setPermissionsTeamId') && $targetBranchId) {
+                setPermissionsTeamId($targetBranchId);
+            }
+            $user->unsetRelation('roles')->unsetRelation('permissions');
+        }
+
         if ($user->is_super_admin && !in_array('super_admin', $roles)) {
             $roles[] = 'super_admin';
         }
