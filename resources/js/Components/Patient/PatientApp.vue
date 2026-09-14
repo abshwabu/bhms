@@ -185,7 +185,7 @@
         </div>
 
         <!-- Scrollable Navigation Items -->
-        <nav class="flex-1 min-h-0 overflow-y-auto px-2.5 py-2 space-y-4">
+        <nav class="flex-1 min-h-0 overflow-y-auto px-2.5 py-2 space-y-4 custom-scrollbar-dark">
           <div
             v-for="group in filteredNavGroups"
             :key="group.id"
@@ -412,7 +412,7 @@
         </header>
 
         <!-- Main Content Area -->
-        <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto overflow-y-auto w-full">
+        <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto overflow-y-auto w-full custom-scrollbar">
       <!-- Access Restricted Alert if module is unauthorized for active role -->
       <div v-if="!canAccessView(currentView)" class="max-w-xl mx-auto my-16 bg-white border border-amber-200 rounded-3xl p-8 shadow-sm text-center space-y-4">
         <div class="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto text-amber-600 border border-amber-200">
@@ -687,7 +687,7 @@
         </div>
 
         <!-- Persona Cards Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar-dark">
           <button
             v-for="persona in demoPersonas"
             :key="persona.role_key"
