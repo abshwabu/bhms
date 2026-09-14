@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Domain\Patient\Actions\RegisterPatientAction;
+use App\Domain\Patient\Models\Patient;
 use App\Domain\Shared\Models\Branch;
 use App\Domain\Shared\Models\Organization;
 use App\Models\User;
@@ -172,138 +173,218 @@ class PatientModuleSeeder extends Seeder
         $registerAction = app(RegisterPatientAction::class);
 
         // Walk-in Patient (John Doe)
-        $john = $registerAction->execute([
-            'registration_type' => 'walk_in',
-            'first_name' => 'John',
-            'middle_name' => 'William',
-            'last_name' => 'Doe',
-            'date_of_birth' => '1985-06-15',
-            'gender' => 'male',
-            'blood_group' => 'O+',
-            'national_id' => 'NAT-850615-101',
-            'phone' => '+1-555-9001',
-            'email' => 'john.doe@example.com',
-            'marital_status' => 'married',
-            'occupation' => 'Software Architect',
-            'address' => [
-                'street' => '742 Evergreen Terrace',
-                'city' => 'Metropolis',
-                'state' => 'NY',
-                'postal_code' => '10012',
-            ],
-            'emergency_contact' => [
-                'name' => 'Jane Doe',
-                'relationship' => 'Spouse',
-                'phone' => '+1-555-9002',
-            ],
-            'initial_history' => [
-                [
-                    'category' => 'chronic_condition',
-                    'condition_or_procedure' => 'Essential Hypertension',
-                    'icd10_code' => 'I10',
-                    'diagnosed_date' => '2020-03-10',
-                    'status' => 'managed',
-                    'severity' => 'mild',
+        $john = Patient::where('national_id', 'NAT-850615-101')->first();
+        if (!$john) {
+            $john = $registerAction->execute([
+                'registration_type' => 'walk_in',
+                'first_name' => 'John',
+                'middle_name' => 'William',
+                'last_name' => 'Doe',
+                'date_of_birth' => '1985-06-15',
+                'gender' => 'male',
+                'blood_group' => 'O+',
+                'national_id' => 'NAT-850615-101',
+                'phone' => '+1-555-9001',
+                'email' => 'john.doe@example.com',
+                'marital_status' => 'married',
+                'occupation' => 'Software Architect',
+                'address' => [
+                    'street' => '742 Evergreen Terrace',
+                    'city' => 'Metropolis',
+                    'state' => 'NY',
+                    'postal_code' => '10012',
                 ],
-                [
-                    'category' => 'surgical_history',
-                    'condition_or_procedure' => 'Laparoscopic Appendectomy',
-                    'diagnosed_date' => '2015-08-22',
-                    'status' => 'resolved',
+                'emergency_contact' => [
+                    'name' => 'Jane Doe',
+                    'relationship' => 'Spouse',
+                    'phone' => '+1-555-9002',
                 ],
-            ],
-            'initial_allergies' => [
-                [
-                    'allergen' => 'Penicillin',
-                    'allergen_type' => 'drug',
-                    'reaction' => 'Severe Urticaria & Angioedema',
-                    'severity' => 'severe',
+                'initial_history' => [
+                    [
+                        'category' => 'chronic_condition',
+                        'condition_or_procedure' => 'Essential Hypertension',
+                        'icd10_code' => 'I10',
+                        'diagnosed_date' => '2020-03-10',
+                        'status' => 'managed',
+                        'severity' => 'mild',
+                    ],
+                    [
+                        'category' => 'surgical_history',
+                        'condition_or_procedure' => 'Laparoscopic Appendectomy',
+                        'diagnosed_date' => '2015-08-22',
+                        'status' => 'resolved',
+                    ],
                 ],
-                [
-                    'allergen' => 'Peanuts',
-                    'allergen_type' => 'food',
-                    'reaction' => 'Anaphylaxis',
-                    'severity' => 'life_threatening',
+                'initial_allergies' => [
+                    [
+                        'allergen' => 'Penicillin',
+                        'allergen_type' => 'drug',
+                        'reaction' => 'Severe Urticaria & Angioedema',
+                        'severity' => 'severe',
+                    ],
+                    [
+                        'allergen' => 'Peanuts',
+                        'allergen_type' => 'food',
+                        'reaction' => 'Anaphylaxis',
+                        'severity' => 'life_threatening',
+                    ],
                 ],
-            ],
-            'initial_insurance' => [
-                'provider_name' => 'Blue Cross Blue Shield',
-                'policy_number' => 'BCBS-778899',
-                'group_number' => 'GRP-5544',
-                'coverage_type' => 'primary',
-                'coverage_percentage' => 85.00,
-                'copay_amount_cents' => 2500, // $25.00
-                'valid_from' => '2026-01-01',
-                'valid_until' => '2026-12-31',
-            ],
-        ], $mainBranch, $receptionistUser->id);
+                'initial_insurance' => [
+                    'provider_name' => 'Blue Cross Blue Shield',
+                    'policy_number' => 'BCBS-778899',
+                    'group_number' => 'GRP-5544',
+                    'coverage_type' => 'primary',
+                    'coverage_percentage' => 85.00,
+                    'copay_amount_cents' => 2500, // $25.00
+                    'valid_from' => '2026-01-01',
+                    'valid_until' => '2026-12-31',
+                ],
+            ], $mainBranch, $receptionistUser->id);
+        }
 
         // Dependent Child of John Doe (Tommy Doe)
-        $tommy = $registerAction->execute([
-            'registration_type' => 'walk_in',
-            'first_name' => 'Tommy',
-            'last_name' => 'Doe',
-            'date_of_birth' => '2018-09-20',
-            'gender' => 'male',
-            'blood_group' => 'O+',
-            'national_id' => 'NAT-180920-808',
-            'address' => [
-                'street' => '742 Evergreen Terrace',
-                'city' => 'Metropolis',
-                'state' => 'NY',
-                'postal_code' => '10012',
-            ],
-            'initial_relationship' => [
-                'related_patient_id' => $john->id,
-                'relationship_type' => 'child',
-                'is_guardian' => false,
-                'is_emergency_contact' => true,
-            ],
-        ], $mainBranch, $receptionistUser->id);
+        $tommy = Patient::where('national_id', 'NAT-180920-808')->first();
+        if (!$tommy) {
+            $tommy = $registerAction->execute([
+                'registration_type' => 'walk_in',
+                'first_name' => 'Tommy',
+                'last_name' => 'Doe',
+                'date_of_birth' => '2018-09-20',
+                'gender' => 'male',
+                'blood_group' => 'O+',
+                'national_id' => 'NAT-180920-808',
+                'address' => [
+                    'street' => '742 Evergreen Terrace',
+                    'city' => 'Metropolis',
+                    'state' => 'NY',
+                    'postal_code' => '10012',
+                ],
+                'initial_relationship' => [
+                    'related_patient_id' => $john->id,
+                    'relationship_type' => 'child',
+                    'is_guardian' => false,
+                    'is_emergency_contact' => true,
+                ],
+            ], $mainBranch, $receptionistUser->id);
+        }
 
         // Referral Patient (Amina Yusuf)
-        $registerAction->execute([
-            'registration_type' => 'referral',
-            'referral_source' => 'City Care Health Clinic / Dr. Marcus Welby',
-            'first_name' => 'Amina',
-            'last_name' => 'Yusuf',
-            'date_of_birth' => '1992-11-04',
-            'gender' => 'female',
-            'blood_group' => 'A+',
-            'national_id' => 'NAT-921104-450',
-            'phone' => '+1-555-8833',
-            'email' => 'amina.yusuf@example.com',
-            'marital_status' => 'single',
-            'occupation' => 'Biologist',
-            'initial_allergies' => [
-                [
-                    'allergen' => 'Latex',
-                    'allergen_type' => 'environmental',
-                    'reaction' => 'Contact Dermatitis',
-                    'severity' => 'moderate',
+        $amina = Patient::where('national_id', 'NAT-921104-450')->first();
+        if (!$amina) {
+            $amina = $registerAction->execute([
+                'registration_type' => 'referral',
+                'referral_source' => 'City Care Health Clinic / Dr. Marcus Welby',
+                'first_name' => 'Amina',
+                'last_name' => 'Yusuf',
+                'date_of_birth' => '1992-11-04',
+                'gender' => 'female',
+                'blood_group' => 'A+',
+                'national_id' => 'NAT-921104-450',
+                'phone' => '+1-555-8833',
+                'email' => 'amina.yusuf@example.com',
+                'marital_status' => 'single',
+                'occupation' => 'Biologist',
+                'initial_allergies' => [
+                    [
+                        'allergen' => 'Latex',
+                        'allergen_type' => 'environmental',
+                        'reaction' => 'Contact Dermatitis',
+                        'severity' => 'moderate',
+                    ],
                 ],
-            ],
-            'initial_insurance' => [
-                'provider_name' => 'Aetna Healthcare',
-                'policy_number' => 'AET-443322',
-                'coverage_type' => 'primary',
-                'coverage_percentage' => 90.00,
-                'valid_from' => '2026-01-01',
-                'valid_until' => '2027-01-01',
-            ],
-        ], $mainBranch, $receptionistUser->id);
+                'initial_insurance' => [
+                    'provider_name' => 'Aetna Healthcare',
+                    'policy_number' => 'AET-443322',
+                    'coverage_type' => 'primary',
+                    'coverage_percentage' => 90.00,
+                    'valid_from' => '2026-01-01',
+                    'valid_until' => '2027-01-01',
+                ],
+            ], $mainBranch, $receptionistUser->id);
+        }
 
         // Emergency Intake Patient (Unknown Trauma Intake)
-        $registerAction->execute([
-            'registration_type' => 'emergency',
-            'triage_level' => 'critical',
-            'first_name' => 'Trauma Male #1',
-            'last_name' => 'Unknown',
-            'is_dob_estimated' => true,
-            'date_of_birth' => '1990-01-01',
-            'gender' => 'male',
-            'blood_group' => 'B-',
-            'notes' => 'Brought in via EMS unconscious following motor vehicle collision. Red triage level.',
-        ], $mainBranch, $doctorUser->id);
+        $trauma = Patient::where('first_name', 'Trauma Male #1')->first();
+        if (!$trauma) {
+            $trauma = $registerAction->execute([
+                'registration_type' => 'emergency',
+                'triage_level' => 'critical',
+                'first_name' => 'Trauma Male #1',
+                'last_name' => 'Unknown',
+                'is_dob_estimated' => true,
+                'date_of_birth' => '1990-01-01',
+                'gender' => 'male',
+                'blood_group' => 'B-',
+                'notes' => 'Brought in via EMS unconscious following motor vehicle collision. Red triage level.',
+            ], $mainBranch, $doctorUser->id);
+        }
+
+        // Additional Adult Inpatient (Solomon Haile)
+        $solomon = Patient::where('national_id', 'NAT-790112-234')->first();
+        if (!$solomon) {
+            $solomon = $registerAction->execute([
+                'registration_type' => 'walk_in',
+                'first_name' => 'Solomon',
+                'middle_name' => 'Kassahun',
+                'last_name' => 'Haile',
+                'date_of_birth' => '1979-01-12',
+                'gender' => 'male',
+                'blood_group' => 'A+',
+                'national_id' => 'NAT-790112-234',
+                'phone' => '+251-91-123-4567',
+                'email' => 'solomon.haile@example.com',
+                'marital_status' => 'married',
+                'occupation' => 'Civil Engineer',
+                'address' => [
+                    'street' => 'Bole Subcity, Woreda 03',
+                    'city' => 'Addis Ababa',
+                    'country' => 'Ethiopia',
+                ],
+                'emergency_contact' => [
+                    'name' => 'Tigist Haile',
+                    'relationship' => 'Spouse',
+                    'phone' => '+251-91-123-4568',
+                ],
+                'initial_history' => [
+                    [
+                        'category' => 'chronic_condition',
+                        'condition_or_procedure' => 'Type 2 Diabetes Mellitus',
+                        'icd10_code' => 'E11.9',
+                        'diagnosed_date' => '2019-05-14',
+                        'status' => 'managed',
+                        'severity' => 'moderate',
+                    ],
+                ],
+            ], $mainBranch, $receptionistUser->id);
+        }
+
+        // Additional Surgical Patient (Bethlehem Mengistu)
+        $bethlehem = Patient::where('national_id', 'NAT-950418-678')->first();
+        if (!$bethlehem) {
+            $bethlehem = $registerAction->execute([
+                'registration_type' => 'walk_in',
+                'first_name' => 'Bethlehem',
+                'middle_name' => 'Tadesse',
+                'last_name' => 'Mengistu',
+                'date_of_birth' => '1995-04-18',
+                'gender' => 'female',
+                'blood_group' => 'O+',
+                'national_id' => 'NAT-950418-678',
+                'phone' => '+251-91-234-5678',
+                'email' => 'bethlehem.m@example.com',
+                'marital_status' => 'single',
+                'occupation' => 'Financial Analyst',
+                'address' => [
+                    'street' => 'Kazanchis, Kirkos Subcity',
+                    'city' => 'Addis Ababa',
+                    'country' => 'Ethiopia',
+                ],
+                'emergency_contact' => [
+                    'name' => 'Dawit Mengistu',
+                    'relationship' => 'Brother',
+                    'phone' => '+251-91-234-5679',
+                ],
+            ], $mainBranch, $receptionistUser->id);
+        }
     }
 }

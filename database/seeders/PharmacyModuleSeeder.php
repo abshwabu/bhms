@@ -130,7 +130,7 @@ class PharmacyModuleSeeder extends Seeder
 
         $seededDrugs = [];
         foreach ($drugsData as $d) {
-            $drug = Drug::updateOrCreate(
+            $drug = Drug::firstOrCreate(
                 ['sku' => $d['sku']],
                 [
                     'id' => (string) Str::uuid(),
@@ -221,7 +221,7 @@ class PharmacyModuleSeeder extends Seeder
         ?string $userId,
         string $status = 'active'
     ): DrugBatch {
-        $batch = DrugBatch::updateOrCreate(
+        $batch = DrugBatch::firstOrCreate(
             ['drug_id' => $drug->id, 'batch_number' => $batchNumber],
             [
                 'id' => (string) Str::uuid(),

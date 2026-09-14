@@ -109,7 +109,7 @@ class BillingModuleSeeder extends Seeder
         ];
 
         foreach ($catalogItems as $item) {
-            PriceList::updateOrCreate(
+            PriceList::firstOrCreate(
                 ['branch_id' => $branch->id, 'code' => $item['code']],
                 [
                     'id' => (string) Str::uuid(),
