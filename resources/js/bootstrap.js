@@ -95,9 +95,22 @@ axios.interceptors.request.use(async (config) => {
 
             // If registering a patient offline, populate local offline patient identity
             if (config.url.includes('/patients') && method === 'post' && payload) {
+                if (!payload.first_name || !String(payload.first_name).trim()) {
+                    payload.first_name = payload.registration_type === 'emergency' ? 'Trauma Unknown' : 'Walk-In Patient';
+                }
+                if (!payload.last_name || !String(payload.last_name).trim()) {
+                    payload.last_name = payload.registration_type === 'emergency' ? 'Unknown' : 'Walk-In';
+                }
+                if (!payload.date_of_birth) {
+                    payload.date_of_birth = '1995-01-01';
+                    payload.is_dob_estimated = true;
+                }
+                if (!payload.gender) payload.gender = 'unknown';
+                if (!payload.registration_type) payload.registration_type = 'walk_in';
+
                 const tempId = payload.id || ('offline-' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)));
                 const tempMrn = payload.mrn || ('OFFLINE-' + Math.floor(100000 + Math.random() * 900000));
-                const fullName = `${payload.first_name || ''} ${payload.last_name || ''}`.trim() || 'Walk-In Patient';
+                const fullName = `${payload.first_name} ${payload.last_name}`.trim();
 
                 payload.id = tempId;
                 payload.mrn = tempMrn;

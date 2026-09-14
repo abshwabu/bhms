@@ -83,6 +83,29 @@ export async function syncOutbox() {
         delete cleanData.is_offline;
         delete cleanData.full_name;
         delete cleanData.age;
+
+        // Specific handling for patient registration outbox replay
+        if (mutation.url?.includes('/patients') && mutation.method?.toUpperCase() === 'POST') {
+          delete cleanData.id;
+          delete cleanData.mrn;
+          if (!cleanData.first_name || !String(cleanData.first_name).trim()) {
+            cleanData.first_name = cleanData.registration_type === 'emergency' ? 'Trauma Unknown' : 'Walk-In Patient';
+          }
+          if (!cleanData.last_name || !String(cleanData.last_name).trim()) {
+            cleanData.last_name = cleanData.registration_type === 'emergency' ? 'Unknown' : 'Walk-In';
+          }
+          if (!cleanData.date_of_birth) {
+            cleanData.date_of_birth = '1995-01-01';
+            cleanData.is_dob_estimated = true;
+          }
+          if (!cleanData.gender) {
+            cleanData.gender = 'unknown';
+          }
+          if (!cleanData.registration_type) {
+            cleanData.registration_type = 'walk_in';
+          }
+        }
+
         bodyData = cleanData;
       }
 

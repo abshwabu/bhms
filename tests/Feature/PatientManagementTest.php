@@ -173,6 +173,42 @@ class PatientManagementTest extends TestCase
     }
 
     /**
+     * Test 3b: Resilience against 422: Registration with completely empty/default payload succeeds.
+     */
+    public function test_patient_registration_resilience_to_empty_fields_and_duplicate_national_id(): void
+    {
+        Sanctum::actingAs($this->receptionist);
+
+        // 1. Completely empty payload (e.g. user submits empty form or minimal offline sync)
+        $emptyResponse = $this->withHeader('X-Branch-ID', $this->branch->id)
+            ->postJson('/api/v1/patients', []);
+
+        $emptyResponse->assertStatus(201)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.first_name', 'Walk-In Patient')
+            ->assertJsonPath('data.last_name', 'Walk-In')
+            ->assertJsonPath('data.gender', 'unknown');
+
+        // 2. Duplicate national ID re-submission (e.g. network retry or sync outbox replay)
+        $firstNid = 'NAT-RETRY-999';
+        $res1 = $this->withHeader('X-Branch-ID', $this->branch->id)
+            ->postJson('/api/v1/patients', [
+                'first_name' => 'Original',
+                'national_id' => $firstNid,
+            ]);
+        $res1->assertStatus(201);
+
+        $res2 = $this->withHeader('X-Branch-ID', $this->branch->id)
+            ->postJson('/api/v1/patients', [
+                'first_name' => 'Replayed Retry',
+                'national_id' => $firstNid,
+            ]);
+        $res2->assertStatus(201)
+            ->assertJsonPath('success', true);
+        $this->assertStringStartsWith('NAT-RETRY-999', $res2->json('data.national_id'));
+    }
+
+    /**
      * Test 4: Role-Based Access: Receptionist CANNOT view or edit clinical medical history.
      */
     public function test_receptionist_forbidden_from_viewing_or_adding_medical_history(): void

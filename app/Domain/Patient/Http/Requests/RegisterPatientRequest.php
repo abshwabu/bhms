@@ -19,118 +19,139 @@ class RegisterPatientRequest extends FormRequest
     {
         $sanitized = [];
 
-        if ($this->has('first_name')) {
-            $sanitized['first_name'] = strip_tags(trim((string) $this->input('first_name')));
+        // 1. Registration Type
+        $rawRt = strtolower(trim((string) $this->input('registration_type')));
+        $registrationType = in_array($rawRt, ['walk_in', 'referral', 'emergency'], true) ? $rawRt : 'walk_in';
+        $sanitized['registration_type'] = $registrationType;
+        $isEmergency = ($registrationType === 'emergency');
+
+        // 2. First Name - Default safely if blank
+        $rawFirst = strip_tags(trim((string) $this->input('first_name')));
+        if ($rawFirst !== '') {
+            $sanitized['first_name'] = mb_substr($rawFirst, 0, 100);
+        } else {
+            $sanitized['first_name'] = $isEmergency ? 'Trauma Unknown' : 'Walk-In Patient';
         }
-        if ($this->has('last_name')) {
-            $last = strip_tags(trim((string) $this->input('last_name')));
-            $sanitized['last_name'] = $last === '' ? null : $last;
+
+        // 3. Last Name - Default safely if blank
+        $rawLast = strip_tags(trim((string) $this->input('last_name')));
+        if ($rawLast !== '') {
+            $sanitized['last_name'] = mb_substr($rawLast, 0, 100);
+        } else {
+            $sanitized['last_name'] = $isEmergency ? 'Unknown' : 'Walk-In';
         }
+
+        // 4. Middle Name
         if ($this->has('middle_name')) {
             $middle = strip_tags(trim((string) $this->input('middle_name')));
-            $sanitized['middle_name'] = $middle === '' ? null : $middle;
+            $sanitized['middle_name'] = $middle === '' ? null : mb_substr($middle, 0, 100);
         }
-        if ($this->has('gender')) {
-            $gen = strtolower(trim((string) $this->input('gender')));
-            $sanitized['gender'] = in_array($gen, ['male', 'female', 'other', 'unknown'], true) ? $gen : 'unknown';
+
+        // 5. Gender
+        $gen = strtolower(trim((string) $this->input('gender')));
+        $sanitized['gender'] = in_array($gen, ['male', 'female', 'other', 'unknown'], true) ? $gen : 'unknown';
+
+        // 6. Date of Birth & is_dob_estimated
+        $dobInput = trim((string) $this->input('date_of_birth'));
+        $estimated = $this->boolean('is_dob_estimated');
+
+        if ($dobInput === '') {
+            $sanitized['date_of_birth'] = now()->subYears(30)->toDateString();
+            $sanitized['is_dob_estimated'] = true;
         } else {
-            $sanitized['gender'] = 'unknown';
-        }
-        if ($this->has('email')) {
-            $email = strtolower(trim((string) $this->input('email')));
-            if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $sanitized['email'] = null;
-            } else {
-                $sanitized['email'] = $email;
+            try {
+                $carbon = \Carbon\Carbon::parse($dobInput);
+                if ($carbon->isFuture()) {
+                    $sanitized['date_of_birth'] = now()->toDateString();
+                } else {
+                    $sanitized['date_of_birth'] = $carbon->toDateString();
+                }
+                $sanitized['is_dob_estimated'] = $estimated;
+            } catch (\Throwable) {
+                $sanitized['date_of_birth'] = now()->subYears(30)->toDateString();
+                $sanitized['is_dob_estimated'] = true;
             }
         }
+
+        // 7. Blood Group
+        $bg = strtoupper(trim((string) $this->input('blood_group')));
+        $validBgs = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+        $sanitized['blood_group'] = in_array($bg, $validBgs, true) ? $bg : null;
+
+        // 8. Email
+        $email = strtolower(trim((string) $this->input('email')));
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $sanitized['email'] = null;
+        } else {
+            $sanitized['email'] = mb_substr($email, 0, 255);
+        }
+
+        // 9. Phone & Alternate Phone
         if ($this->has('phone')) {
             $phone = preg_replace('/[^\d+]/', '', trim((string) $this->input('phone')));
-            $sanitized['phone'] = $phone ?: null;
+            $sanitized['phone'] = $phone ? mb_substr($phone, 0, 50) : null;
         }
         if ($this->has('alternate_phone')) {
             $altPhone = preg_replace('/[^\d+]/', '', trim((string) $this->input('alternate_phone')));
-            $sanitized['alternate_phone'] = $altPhone ?: null;
+            $sanitized['alternate_phone'] = $altPhone ? mb_substr($altPhone, 0, 50) : null;
         }
+
+        // 10. National ID - Deduplicate if already taken in this org
         if ($this->has('national_id')) {
             $nid = strtoupper(trim(strip_tags((string) $this->input('national_id'))));
             if ($nid === '') {
                 $sanitized['national_id'] = null;
             } else {
-                $orgId = app()->bound('current_organization_id') ? app('current_organization_id') : null;
+                $orgId = app()->bound('current_organization_id') 
+                    ? app('current_organization_id') 
+                    : (auth()->user()?->organization_id ?? null);
                 $exists = \App\Domain\Patient\Models\Patient::where('organization_id', $orgId)
                     ->where('national_id', $nid)
                     ->whereNull('deleted_at')
                     ->exists();
                 if ($exists) {
-                    $sanitized['national_id'] = $nid . '-' . strtoupper(substr((string) \Illuminate\Support\Str::uuid(), 0, 4));
+                    $sanitized['national_id'] = mb_substr($nid, 0, 90) . '-' . strtoupper(substr((string) \Illuminate\Support\Str::uuid(), 0, 4));
                 } else {
-                    $sanitized['national_id'] = $nid;
+                    $sanitized['national_id'] = mb_substr($nid, 0, 100);
                 }
             }
         }
+
+        // 11. Passport Number
         if ($this->has('passport_number')) {
             $passport = strtoupper(trim(strip_tags((string) $this->input('passport_number'))));
-            $sanitized['passport_number'] = $passport === '' ? null : $passport;
+            $sanitized['passport_number'] = $passport === '' ? null : mb_substr($passport, 0, 100);
         }
-        if ($this->has('blood_group')) {
-            $bg = strtoupper(trim((string) $this->input('blood_group')));
-            $validBgs = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-            $sanitized['blood_group'] = in_array($bg, $validBgs, true) ? $bg : null;
-        }
+
+        // 12. Referral Source & Triage Level
         if ($this->has('referral_source')) {
             $ref = strip_tags(trim((string) $this->input('referral_source')));
-            $sanitized['referral_source'] = $ref === '' ? null : $ref;
+            $sanitized['referral_source'] = $ref === '' ? null : mb_substr($ref, 0, 255);
         }
         if ($this->has('triage_level')) {
-            $tl = trim((string) $this->input('triage_level'));
-            $sanitized['triage_level'] = $tl === '' ? null : $tl;
+            $tl = strtolower(trim((string) $this->input('triage_level')));
+            $sanitized['triage_level'] = in_array($tl, ['critical', 'urgent', 'standard', 'non_urgent'], true) ? $tl : null;
         }
+
+        // 13. Demographics Details
         if ($this->has('marital_status')) {
-            $ms = trim((string) $this->input('marital_status'));
-            $sanitized['marital_status'] = $ms === '' ? null : $ms;
+            $ms = strtolower(trim((string) $this->input('marital_status')));
+            $sanitized['marital_status'] = in_array($ms, ['single', 'married', 'divorced', 'widowed', 'other'], true) ? $ms : null;
         }
         if ($this->has('occupation')) {
             $occ = strip_tags(trim((string) $this->input('occupation')));
-            $sanitized['occupation'] = $occ === '' ? null : $occ;
+            $sanitized['occupation'] = $occ === '' ? null : mb_substr($occ, 0, 100);
         }
         if ($this->has('preferred_language')) {
             $pl = strip_tags(trim((string) $this->input('preferred_language')));
-            $sanitized['preferred_language'] = $pl === '' ? null : $pl;
+            $sanitized['preferred_language'] = $pl === '' ? null : mb_substr($pl, 0, 50);
         }
         if ($this->has('notes')) {
             $notes = strip_tags(trim((string) $this->input('notes')));
-            $sanitized['notes'] = $notes === '' ? null : $notes;
-        }
-        if ($this->has('date_of_birth')) {
-            $dob = trim((string) $this->input('date_of_birth'));
-            if ($dob === '') {
-                $sanitized['date_of_birth'] = null;
-            } else {
-                try {
-                    $carbon = \Carbon\Carbon::parse($dob);
-                    if ($carbon->isFuture()) {
-                        $sanitized['date_of_birth'] = now()->toDateString();
-                    } else {
-                        $sanitized['date_of_birth'] = $carbon->toDateString();
-                    }
-                } catch (\Throwable) {
-                    $sanitized['date_of_birth'] = null;
-                }
-            }
-        }
-        if (empty($sanitized['date_of_birth']) && ($this->boolean('is_dob_estimated') || $this->input('registration_type') === 'emergency')) {
-            $sanitized['date_of_birth'] = now()->subYears(30)->toDateString();
-            $sanitized['is_dob_estimated'] = true;
-        }
-        if ($this->has('registration_type')) {
-            $rt = strtolower(trim((string) $this->input('registration_type')));
-            $sanitized['registration_type'] = in_array($rt, ['walk_in', 'referral', 'emergency'], true) ? $rt : 'walk_in';
-        } else {
-            $sanitized['registration_type'] = 'walk_in';
+            $sanitized['notes'] = $notes === '' ? null : mb_substr($notes, 0, 2000);
         }
 
-        // Clean empty address object
+        // 14. Clean empty address object
         if ($this->has('address') && is_array($this->input('address'))) {
             $addr = array_filter($this->input('address'), fn ($val) => is_string($val) && trim($val) !== '');
             if (empty($addr) || (count($addr) === 1 && isset($addr['country']))) {
@@ -138,7 +159,7 @@ class RegisterPatientRequest extends FormRequest
             }
         }
 
-        // Clean empty emergency_contact object
+        // 15. Clean empty emergency_contact object
         if ($this->has('emergency_contact') && is_array($this->input('emergency_contact'))) {
             $ec = array_filter($this->input('emergency_contact'), fn ($val) => is_string($val) && trim($val) !== '');
             if (empty($ec)) {
@@ -146,18 +167,14 @@ class RegisterPatientRequest extends FormRequest
             }
         }
 
-        // For emergency registration if last_name is missing, default to Unknown
-        if (($this->input('registration_type') === 'emergency') && empty($sanitized['last_name'])) {
-            $sanitized['last_name'] = 'Unknown';
-        }
-
         $this->merge($sanitized);
     }
 
     public function rules(): array
     {
-        $isEmergency = $this->input('registration_type') === 'emergency';
-        $orgId = app()->bound('current_organization_id') ? app('current_organization_id') : null;
+        $orgId = app()->bound('current_organization_id') 
+            ? app('current_organization_id') 
+            : (auth()->user()?->organization_id ?? null);
 
         return [
             // Registration Type
@@ -168,8 +185,8 @@ class RegisterPatientRequest extends FormRequest
             // Core Demographics
             'first_name' => ['required', 'string', 'max:100'],
             'middle_name' => ['nullable', 'string', 'max:100'],
-            'last_name' => [$isEmergency ? 'nullable' : 'required', 'string', 'max:100'],
-            'date_of_birth' => [$isEmergency ? 'nullable' : 'required', 'date', 'before_or_equal:today'],
+            'last_name' => ['nullable', 'string', 'max:100'],
+            'date_of_birth' => ['nullable', 'date', 'before_or_equal:today'],
             'is_dob_estimated' => ['boolean'],
             'gender' => ['required', Rule::in(['male', 'female', 'other', 'unknown'])],
             'blood_group' => ['nullable', Rule::in(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'])],

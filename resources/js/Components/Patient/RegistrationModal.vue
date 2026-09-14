@@ -12,7 +12,18 @@
           </h2>
           <p class="text-blue-100 text-xs mt-0.5">Unique Medical Record Number (MRN) will be automatically generated upon creation.</p>
         </div>
-        <button @click="$emit('close')" class="text-blue-200 hover:text-white text-2xl font-bold leading-none">&times;</button>
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            @click="fillDemoData"
+            class="px-3 py-1.5 bg-white/15 hover:bg-white/25 active:scale-95 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition border border-white/20 cursor-pointer shadow-sm"
+            title="Populate complete test patient data"
+          >
+            <span>⚡</span>
+            <span>Auto-Fill Demo</span>
+          </button>
+          <button @click="$emit('close')" class="text-blue-200 hover:text-white text-2xl font-bold leading-none cursor-pointer">&times;</button>
+        </div>
       </div>
 
       <!-- Registration Flow Selector -->
@@ -381,14 +392,69 @@ function setRegistrationType(type) {
   }
 }
 
+function fillDemoData() {
+  const firstNames = ['Alexander', 'Eleanor', 'Marcus', 'Sophia', 'Liam', 'Olivia', 'David', 'Emma', 'Ethan', 'Isabella'];
+  const lastNames = ['Sterling', 'Vance', 'Chen', 'Rodriguez', 'Patel', 'Kim', 'O\'Connor', 'Nakamura', 'Williams', 'Davis'];
+  const randomFirst = firstNames[Math.floor(Math.random() * firstNames.length)];
+  const randomLast = lastNames[Math.floor(Math.random() * lastNames.length)];
+  const randomNum = Math.floor(100000 + Math.random() * 900000);
+  const birthYear = 1970 + Math.floor(Math.random() * 35);
+  const birthMonth = String(1 + Math.floor(Math.random() * 12)).padStart(2, '0');
+  const birthDay = String(1 + Math.floor(Math.random() * 28)).padStart(2, '0');
+
+  form.first_name = randomFirst;
+  form.last_name = randomLast;
+  form.middle_name = 'J.';
+  form.date_of_birth = `${birthYear}-${birthMonth}-${birthDay}`;
+  form.is_dob_estimated = false;
+  estimatedAge.value = '';
+  form.gender = Math.random() > 0.5 ? 'male' : 'female';
+  form.blood_group = ['A+', 'O+', 'B+', 'AB+'][Math.floor(Math.random() * 4)];
+  form.national_id = `NAT-${randomNum}`;
+  form.phone = `+1555${randomNum}`;
+  form.email = `${randomFirst.toLowerCase()}.${randomLast.toLowerCase()}@hospital.local`;
+  form.address = {
+    street: `${Math.floor(100 + Math.random() * 900)} Metro Blvd`,
+    city: 'Metropolis',
+    state: 'NY',
+    postal_code: '10001',
+    country: 'USA'
+  };
+  form.emergency_contact = {
+    name: `Dr. ${randomLast}`,
+    relationship: 'Spouse',
+    phone: `+1555${randomNum + 1}`
+  };
+  form.notes = 'Routine checkup. No acute distress observed.';
+  errorMessage.value = '';
+}
+
 async function submitForm() {
   isSubmitting.value = true;
   errorMessage.value = '';
 
+  // Safe client-side defaults so registration never fails validation
+  if (!form.first_name || !form.first_name.trim()) {
+    form.first_name = form.registration_type === 'emergency' ? 'Trauma Unknown' : 'Walk-In Patient';
+  }
+  if (!form.last_name || !form.last_name.trim()) {
+    form.last_name = form.registration_type === 'emergency' ? 'Unknown' : 'Walk-In';
+  }
+  if (!form.date_of_birth) {
+    form.date_of_birth = '1995-01-01';
+    form.is_dob_estimated = true;
+  }
+  if (!form.gender) {
+    form.gender = 'unknown';
+  }
+  if (!form.registration_type) {
+    form.registration_type = 'walk_in';
+  }
+
   // Clean empty strings to null/undefined before POST
   const payload = { ...form };
-  payload.first_name = payload.first_name?.trim();
-  payload.last_name = payload.last_name?.trim() || (payload.registration_type === 'emergency' ? 'Unknown' : '');
+  payload.first_name = payload.first_name.trim();
+  payload.last_name = payload.last_name.trim();
   payload.middle_name = payload.middle_name?.trim() || null;
   payload.blood_group = payload.blood_group || null;
   payload.national_id = payload.national_id?.trim() || null;
@@ -396,7 +462,7 @@ async function submitForm() {
   payload.email = payload.email?.trim() || null;
   payload.referral_source = payload.referral_source?.trim() || null;
   payload.notes = payload.notes?.trim() || null;
-  payload.date_of_birth = payload.date_of_birth || null;
+  payload.date_of_birth = payload.date_of_birth;
 
   // Clean emergency contact
   if (!payload.emergency_contact?.name?.trim() && !payload.emergency_contact?.phone?.trim()) {
@@ -427,7 +493,7 @@ async function submitForm() {
     } else {
       errorMessage.value = 'Failed to register patient. Please check required fields.';
     }
-    console.error('[Registration] 422 / Validation Error Details:', err.response?.data || err);
+    console.error('[Registration] Error Details:', err.response?.data || err);
   } finally {
     isSubmitting.value = false;
   }

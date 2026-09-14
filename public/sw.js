@@ -3,7 +3,7 @@
  * Provides resilient offline caching, shell resilience, and network fallback.
  */
 
-const CACHE_VERSION = 'v1.0.4';
+const CACHE_VERSION = 'v1.0.5';
 const SHELL_CACHE = `hms-shell-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `hms-dynamic-${CACHE_VERSION}`;
 const API_CACHE = `hms-api-${CACHE_VERSION}`;
