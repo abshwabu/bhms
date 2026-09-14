@@ -57,7 +57,8 @@ class AuthenticationAndRbacTest extends TestCase
         ]);
 
         $roles = collect($response->json('demo_accounts'))->pluck('role_key')->all();
-        $this->assertContains('super_admin', $roles);
+        $this->assertNotContains('super_admin', $roles);
+        $this->assertCount(6, $roles);
         $this->assertContains('hospital_admin', $roles);
         $this->assertContains('doctor', $roles);
         $this->assertContains('nurse', $roles);

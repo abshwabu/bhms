@@ -904,14 +904,6 @@ const exitingImpersonation = ref(false);
 // Built-in Demo Personas for Simulation
 const defaultDemoPersonas = [
   {
-    role_key: 'super_admin',
-    role_label: 'Super Admin',
-    email: 'superadmin@hms.local',
-    password: 'password123',
-    name: 'Alex Thorne',
-    accessible_scopes: ['All Hospital Tenants', 'Feature Matrix', 'Queues & Latency', 'Impersonation'],
-  },
-  {
     role_key: 'hospital_admin',
     role_label: 'Hospital Admin',
     email: 'admin@hms.local',

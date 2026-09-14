@@ -182,16 +182,6 @@ const submitting = ref(false);
 const errorMessage = ref('');
 const demoAccounts = ref([
   {
-    role_key: 'super_admin',
-    role_label: 'Super Admin',
-    email: 'superadmin@hms.local',
-    password: 'password123',
-    name: 'Alex Thorne',
-    tag: 'Vendor Platform Control',
-    color: 'indigo',
-    accessible_scopes: ['Multi-Tenant Fleets', 'Feature Flags Matrix', 'Queue Inspector', 'Impersonation'],
-  },
-  {
     role_key: 'hospital_admin',
     role_label: 'Hospital Admin',
     email: 'admin@hms.local',

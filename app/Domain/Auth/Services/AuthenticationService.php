@@ -320,16 +320,6 @@ class AuthenticationService
 
         return [
             [
-                'role_key' => 'super_admin',
-                'role_label' => 'Super Admin',
-                'email' => 'superadmin@hms.local',
-                'password' => 'password123',
-                'name' => 'Alex Thorne',
-                'tag' => 'Vendor Platform Control',
-                'color' => 'indigo',
-                'accessible_scopes' => ['All Hospital Tenants', 'Feature Matrix', 'Queues & Latency', 'Impersonation'],
-            ],
-            [
                 'role_key' => 'hospital_admin',
                 'role_label' => 'Hospital Admin',
                 'email' => 'admin@hms.local',
