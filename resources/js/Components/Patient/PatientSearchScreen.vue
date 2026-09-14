@@ -91,11 +91,17 @@
               class="hover:bg-blue-50/40 transition cursor-pointer"
               @click="$emit('selectPatient', patient)"
             >
-              <td class="py-4 px-6 font-mono font-bold text-blue-700">
-                {{ patient.mrn }}
+              <td class="py-4 px-6 font-mono font-bold text-blue-700 flex items-center gap-1.5">
+                <span>{{ patient.mrn }}</span>
+                <span
+                  v-if="patient.is_offline_queued || (patient.id && typeof patient.id === 'string' && patient.id.startsWith('offline-'))"
+                  class="px-1.5 py-0.5 text-[9px] font-sans font-bold uppercase rounded bg-amber-100 text-amber-900 border border-amber-300"
+                >
+                  Offline Queued
+                </span>
               </td>
               <td class="py-4 px-6 font-bold text-slate-900">
-                {{ patient.full_name }}
+                {{ patient.full_name || patient.name }}
               </td>
               <td class="py-4 px-6">
                 <span>{{ patient.age !== null ? patient.age + ' yrs' : 'N/A' }}</span>
@@ -143,6 +149,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import { getOutboxMutations } from '../../offline/offlineStorage';
 
 const props = defineProps({
   branchId: { type: String, required: true },
@@ -198,7 +205,33 @@ async function fetchPatients() {
       },
     });
 
-    patients.value = res.data.data || [];
+    let list = res.data.data || [];
+
+    // Merge any pending offline outbox patient registrations
+    try {
+      const outbox = await getOutboxMutations();
+      const offlinePatients = outbox
+        .filter(m => m.url?.includes('/patients') && m.method === 'POST' && m.data?.id)
+        .map(m => m.data);
+
+      if (offlinePatients.length > 0) {
+        const existingIds = new Set(list.map(p => p.id));
+        for (const op of offlinePatients) {
+          if (!existingIds.has(op.id)) {
+            // Check filters if active
+            const matchesFilter = activeFilter.value === 'all' || op.registration_type === activeFilter.value;
+            const matchesQuery = !searchTerm.value.trim() || 
+              (op.name || op.full_name || '').toLowerCase().includes(searchTerm.value.toLowerCase()) ||
+              (op.mrn || '').toLowerCase().includes(searchTerm.value.toLowerCase());
+            if (matchesFilter && matchesQuery) {
+              list.unshift(op);
+            }
+          }
+        }
+      }
+    } catch {}
+
+    patients.value = list;
     totalCount.value = res.data.meta?.pagination?.total || patients.value.length;
     searchLatencyMs.value = Math.round(performance.now() - startTime);
   } catch (err) {
@@ -214,6 +247,12 @@ async function fetchPatients() {
 
 onMounted(() => {
   fetchPatients();
+
+  // Refresh when sync completes or outbox updates
+  if (typeof window !== 'undefined') {
+    window.addEventListener('hms:sync-completed', fetchPatients);
+    window.addEventListener('hms:outbox-updated', fetchPatients);
+  }
 });
 
 defineExpose({ fetchPatients });

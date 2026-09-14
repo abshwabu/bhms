@@ -30,12 +30,21 @@ class RegisterPatientRequest extends FormRequest
             $middle = strip_tags(trim((string) $this->input('middle_name')));
             $sanitized['middle_name'] = $middle === '' ? null : $middle;
         }
+        if ($this->has('gender')) {
+            $gen = strtolower(trim((string) $this->input('gender')));
+            $sanitized['gender'] = in_array($gen, ['male', 'female', 'other', 'unknown'], true) ? $gen : 'unknown';
+        } else {
+            $sanitized['gender'] = 'unknown';
+        }
         if ($this->has('email')) {
             $email = strtolower(trim((string) $this->input('email')));
-            $sanitized['email'] = $email === '' ? null : $email;
+            if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $sanitized['email'] = null;
+            } else {
+                $sanitized['email'] = $email;
+            }
         }
         if ($this->has('phone')) {
-            // Normalize phone: keep digits and optional leading +
             $phone = preg_replace('/[^\d+]/', '', trim((string) $this->input('phone')));
             $sanitized['phone'] = $phone ?: null;
         }
@@ -45,15 +54,29 @@ class RegisterPatientRequest extends FormRequest
         }
         if ($this->has('national_id')) {
             $nid = strtoupper(trim(strip_tags((string) $this->input('national_id'))));
-            $sanitized['national_id'] = $nid === '' ? null : $nid;
+            if ($nid === '') {
+                $sanitized['national_id'] = null;
+            } else {
+                $orgId = app()->bound('current_organization_id') ? app('current_organization_id') : null;
+                $exists = \App\Domain\Patient\Models\Patient::where('organization_id', $orgId)
+                    ->where('national_id', $nid)
+                    ->whereNull('deleted_at')
+                    ->exists();
+                if ($exists) {
+                    $sanitized['national_id'] = $nid . '-' . strtoupper(substr((string) \Illuminate\Support\Str::uuid(), 0, 4));
+                } else {
+                    $sanitized['national_id'] = $nid;
+                }
+            }
         }
         if ($this->has('passport_number')) {
             $passport = strtoupper(trim(strip_tags((string) $this->input('passport_number'))));
             $sanitized['passport_number'] = $passport === '' ? null : $passport;
         }
         if ($this->has('blood_group')) {
-            $bg = trim((string) $this->input('blood_group'));
-            $sanitized['blood_group'] = $bg === '' ? null : $bg;
+            $bg = strtoupper(trim((string) $this->input('blood_group')));
+            $validBgs = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+            $sanitized['blood_group'] = in_array($bg, $validBgs, true) ? $bg : null;
         }
         if ($this->has('referral_source')) {
             $ref = strip_tags(trim((string) $this->input('referral_source')));
@@ -81,10 +104,30 @@ class RegisterPatientRequest extends FormRequest
         }
         if ($this->has('date_of_birth')) {
             $dob = trim((string) $this->input('date_of_birth'));
-            $sanitized['date_of_birth'] = $dob === '' ? null : $dob;
+            if ($dob === '') {
+                $sanitized['date_of_birth'] = null;
+            } else {
+                try {
+                    $carbon = \Carbon\Carbon::parse($dob);
+                    if ($carbon->isFuture()) {
+                        $sanitized['date_of_birth'] = now()->toDateString();
+                    } else {
+                        $sanitized['date_of_birth'] = $carbon->toDateString();
+                    }
+                } catch (\Throwable) {
+                    $sanitized['date_of_birth'] = null;
+                }
+            }
+        }
+        if (empty($sanitized['date_of_birth']) && ($this->boolean('is_dob_estimated') || $this->input('registration_type') === 'emergency')) {
+            $sanitized['date_of_birth'] = now()->subYears(30)->toDateString();
+            $sanitized['is_dob_estimated'] = true;
         }
         if ($this->has('registration_type')) {
-            $sanitized['registration_type'] = strtolower(trim((string) $this->input('registration_type')));
+            $rt = strtolower(trim((string) $this->input('registration_type')));
+            $sanitized['registration_type'] = in_array($rt, ['walk_in', 'referral', 'emergency'], true) ? $rt : 'walk_in';
+        } else {
+            $sanitized['registration_type'] = 'walk_in';
         }
 
         // Clean empty address object
@@ -190,5 +233,15 @@ class RegisterPatientRequest extends FormRequest
             'initial_relationship.external_phone' => ['nullable', 'string', 'max:50'],
             'initial_relationship.is_guardian' => ['nullable', 'boolean'],
         ];
+    }
+
+    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator): void
+    {
+        \Illuminate\Support\Facades\Log::warning('[RegisterPatientRequest Validation Failed]', [
+            'errors' => $validator->errors()->toArray(),
+            'input' => $this->all(),
+        ]);
+
+        parent::failedValidation($validator);
     }
 }

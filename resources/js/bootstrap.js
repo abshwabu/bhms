@@ -92,6 +92,47 @@ axios.interceptors.request.use(async (config) => {
             if (typeof payload === 'string') {
                 try { payload = JSON.parse(payload); } catch {}
             }
+
+            // If registering a patient offline, populate local offline patient identity
+            if (config.url.includes('/patients') && method === 'post' && payload) {
+                const tempId = payload.id || ('offline-' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)));
+                const tempMrn = payload.mrn || ('OFFLINE-' + Math.floor(100000 + Math.random() * 900000));
+                const fullName = `${payload.first_name || ''} ${payload.last_name || ''}`.trim() || 'Walk-In Patient';
+
+                payload.id = tempId;
+                payload.mrn = tempMrn;
+                payload.name = fullName;
+                payload.full_name = fullName;
+                payload.created_at = new Date().toISOString();
+                payload.is_offline_queued = true;
+
+                // Cache patient locally in api_cache so GET /api/v1/patients displays the patient!
+                (async () => {
+                    try {
+                        const cached = await getApiResponse('/api/v1/patients');
+                        if (cached) {
+                            if (Array.isArray(cached.data)) {
+                                cached.data.unshift(payload);
+                            } else if (Array.isArray(cached)) {
+                                cached.unshift(payload);
+                            }
+                            await saveApiResponse('/api/v1/patients', cached);
+                        }
+                        await saveApiResponse(`/api/v1/patients/${tempId}`, { success: true, data: payload });
+                        await saveApiResponse(`/api/v1/clinical/patients/${tempId}/ehr-timeline`, {
+                            success: true,
+                            data: {
+                                patient: payload,
+                                summary: { active_problems_count: 0, pending_orders_count: 0, active_prescriptions_count: 0 },
+                                timeline: []
+                            }
+                        });
+                    } catch (err) {
+                        console.warn('[HMS Offline] Failed to cache newly registered patient:', err);
+                    }
+                })();
+            }
+
             const summary = generateSummary(config.url, method, payload);
             const mutation = await addOutboxMutation({
                 url: config.url,
@@ -191,6 +232,43 @@ axios.interceptors.response.use(
                 if (typeof payload === 'string') {
                     try { payload = JSON.parse(payload); } catch {}
                 }
+
+                if (config.url.includes('/patients') && method === 'post' && payload) {
+                    const tempId = payload.id || ('offline-' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)));
+                    const tempMrn = payload.mrn || ('OFFLINE-' + Math.floor(100000 + Math.random() * 900000));
+                    const fullName = `${payload.first_name || ''} ${payload.last_name || ''}`.trim() || 'Walk-In Patient';
+
+                    payload.id = tempId;
+                    payload.mrn = tempMrn;
+                    payload.name = fullName;
+                    payload.full_name = fullName;
+                    payload.created_at = new Date().toISOString();
+                    payload.is_offline_queued = true;
+
+                    (async () => {
+                        try {
+                            const cached = await getApiResponse('/api/v1/patients');
+                            if (cached) {
+                                if (Array.isArray(cached.data)) {
+                                    cached.data.unshift(payload);
+                                } else if (Array.isArray(cached)) {
+                                    cached.unshift(payload);
+                                }
+                                await saveApiResponse('/api/v1/patients', cached);
+                            }
+                            await saveApiResponse(`/api/v1/patients/${tempId}`, { success: true, data: payload });
+                            await saveApiResponse(`/api/v1/clinical/patients/${tempId}/ehr-timeline`, {
+                                success: true,
+                                data: {
+                                    patient: payload,
+                                    summary: { active_problems_count: 0, pending_orders_count: 0, active_prescriptions_count: 0 },
+                                    timeline: []
+                                }
+                            });
+                        } catch {}
+                    })();
+                }
+
                 const summary = generateSummary(config.url, method, payload);
                 const mutation = await addOutboxMutation({
                     url: config.url,

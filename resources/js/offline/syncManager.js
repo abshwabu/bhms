@@ -45,23 +45,74 @@ export async function syncOutbox() {
       };
 
       // Retrieve freshest token from storage
-      const token = sessionStorage.getItem('hms_auth_token');
+      const token = sessionStorage.getItem('hms_auth_token') || localStorage.getItem('hms_auth_token');
       if (token && !headers['Authorization']) {
         headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      // Ensure branch ID is present
+      if (!headers['X-Branch-ID']) {
+        try {
+          const sessionRaw = localStorage.getItem('hms_portal_session');
+          if (sessionRaw) {
+            const parsed = JSON.parse(sessionRaw);
+            if (parsed?.default_branch?.id) {
+              headers['X-Branch-ID'] = parsed.default_branch.id;
+            }
+          }
+        } catch {}
+      }
+
+      // Ensure CSRF token is present
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+      if (csrfToken && !headers['X-CSRF-TOKEN']) {
+        headers['X-CSRF-TOKEN'] = csrfToken;
+      }
+
+      // Strip client-side offline temporary fields before sending to API
+      let bodyData = mutation.data;
+      if (bodyData && typeof bodyData === 'object') {
+        const cleanData = { ...bodyData };
+        if (cleanData.id && typeof cleanData.id === 'string' && cleanData.id.startsWith('offline-')) {
+          delete cleanData.id;
+        }
+        if (cleanData.mrn && typeof cleanData.mrn === 'string' && cleanData.mrn.startsWith('OFFLINE-')) {
+          delete cleanData.mrn;
+        }
+        delete cleanData.is_offline_queued;
+        delete cleanData.is_offline;
+        delete cleanData.full_name;
+        delete cleanData.age;
+        bodyData = cleanData;
       }
 
       const response = await fetch(mutation.url, {
         method: mutation.method,
         headers,
-        body: mutation.data ? (typeof mutation.data === 'string' ? mutation.data : JSON.stringify(mutation.data)) : undefined,
+        body: bodyData ? (typeof bodyData === 'string' ? bodyData : JSON.stringify(bodyData)) : undefined,
       });
 
       if (response.ok || response.status === 201 || response.status === 200 || response.status === 204) {
         await removeOutboxMutation(mutation.id);
         syncedCount++;
+
+        // If patient registration synced, update any local offline references
+        try {
+          const resData = await response.json().catch(() => null);
+          if (resData?.data?.id && mutation.data?.id) {
+            const cached = await getApiResponse('/api/v1/patients');
+            if (cached && Array.isArray(cached.data)) {
+              const idx = cached.data.findIndex(p => p.id === mutation.data.id);
+              if (idx !== -1) {
+                cached.data[idx] = resData.data;
+                await saveApiResponse('/api/v1/patients', cached);
+              }
+            }
+          }
+        } catch {}
       } else if (response.status === 422 || response.status === 400 || response.status === 409) {
-        // Client validation error or conflict: remove from queue to avoid infinite blockage
-        console.warn('[HMS Sync] Mutation unrecoverable (HTTP ' + response.status + '):', mutation.summary);
+        const errJson = await response.json().catch(() => null);
+        console.warn('[HMS Sync] Mutation unrecoverable (HTTP ' + response.status + '):', mutation.summary, errJson);
         await removeOutboxMutation(mutation.id);
         failedCount++;
       } else if (response.status === 401) {
