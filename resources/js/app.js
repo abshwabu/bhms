@@ -19,6 +19,7 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js', { scope: '/' })
             .then((registration) => {
                 console.log('[HMS ServiceWorker] Registered with scope:', registration.scope);
+                registration.update().catch(() => {});
             })
             .catch((error) => {
                 console.warn('[HMS ServiceWorker] Registration failed:', error);

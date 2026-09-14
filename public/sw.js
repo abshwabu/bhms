@@ -3,27 +3,59 @@
  * Provides resilient offline caching, shell resilience, and network fallback.
  */
 
-const CACHE_VERSION = 'v1.0.2';
+const CACHE_VERSION = 'v1.0.3';
 const SHELL_CACHE = `hms-shell-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `hms-dynamic-${CACHE_VERSION}`;
 const API_CACHE = `hms-api-${CACHE_VERSION}`;
 
-const PRECACHE_URLS = [
+const BASE_PRECACHE_URLS = [
   '/app',
   '/login',
   '/manifest.json',
   '/icon.svg',
   '/favicon.ico',
+  '/build/manifest.json',
 ];
 
-// Install: Precache application shell
+// Install: Precache application shell and all Vite build assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(SHELL_CACHE).then((cache) => {
-      return cache.addAll(PRECACHE_URLS).catch((err) => {
-        console.warn('[SW] Pre-cache partial fail (continuing):', err);
-      });
-    }).then(() => self.skipWaiting())
+    (async () => {
+      const cache = await caches.open(SHELL_CACHE);
+
+      // 1. Precache standard shell pages
+      try {
+        await cache.addAll(BASE_PRECACHE_URLS);
+      } catch (err) {
+        console.warn('[SW] Base shell precache notice:', err);
+      }
+
+      // 2. Discover and precache all active Vite build bundles from manifest.json
+      try {
+        const manifestRes = await fetch('/build/manifest.json');
+        if (manifestRes.ok) {
+          const manifest = await manifestRes.json();
+          const assetUrls = Object.values(manifest)
+            .filter((entry) => entry && entry.file)
+            .map((entry) => `/build/${entry.file}`);
+
+          await Promise.all(
+            assetUrls.map((url) =>
+              fetch(url)
+                .then((res) => {
+                  if (res.ok) return cache.put(url, res);
+                })
+                .catch((e) => console.warn('[SW] Asset precache skip:', url, e))
+            )
+          );
+          console.log('[SW] Pre-cached Vite build assets successfully');
+        }
+      } catch (err) {
+        console.warn('[SW] Could not pre-cache Vite assets from manifest:', err);
+      }
+
+      return self.skipWaiting();
+    })()
   );
 });
 
@@ -110,7 +142,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. Static assets (Vite /build/*, fonts, images): Cache-First, network fallback
+  // 4. Static assets (Vite /build/*, fonts, images): Cache-First, network fallback with safe offline handling
   if (
     url.pathname.startsWith('/build/') ||
     url.pathname.endsWith('.woff2') ||
@@ -122,18 +154,57 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('.ico')
   ) {
     event.respondWith(
-      caches.match(request).then((cached) => {
+      (async () => {
+        // Check cache across all active caches
+        const cached = await caches.match(request);
         if (cached) {
           return cached;
         }
-        return fetch(request).then((networkResponse) => {
+
+        // Try network
+        try {
+          const networkResponse = await fetch(request);
           if (networkResponse && networkResponse.status === 200) {
             const copy = networkResponse.clone();
-            caches.open(DYNAMIC_CACHE).then((cache) => cache.put(request, copy));
+            const dynCache = await caches.open(DYNAMIC_CACHE);
+            dynCache.put(request, copy);
           }
           return networkResponse;
-        });
-      })
+        } catch (fetchErr) {
+          console.warn('[SW] Offline asset fallback for:', request.url);
+
+          // If offline and exact hash not found, look for any matching bundle in active caches
+          const activeCaches = [SHELL_CACHE, DYNAMIC_CACHE];
+          for (const cacheName of activeCaches) {
+            const c = await caches.open(cacheName);
+            const keys = await c.keys();
+            const matchKey = keys.find((k) => {
+              const u = new URL(k.url);
+              if (url.pathname.endsWith('.js') && u.pathname.endsWith('.js') && u.pathname.includes('/app-')) return true;
+              if (url.pathname.endsWith('.css') && u.pathname.endsWith('.css') && u.pathname.includes('/app-')) return true;
+              return false;
+            });
+            if (matchKey) {
+              const matched = await c.match(matchKey);
+              if (matched) return matched;
+            }
+          }
+
+          // Return graceful fallback response to avoid unhandled promise rejection
+          if (url.pathname.endsWith('.css')) {
+            return new Response('/* offline css */', {
+              headers: { 'Content-Type': 'text/css' },
+            });
+          }
+          if (url.pathname.endsWith('.js')) {
+            return new Response('/* offline js */', {
+              headers: { 'Content-Type': 'application/javascript' },
+            });
+          }
+
+          return new Response(null, { status: 404, statusText: 'Offline Asset Unavailable' });
+        }
+      })()
     );
     return;
   }
