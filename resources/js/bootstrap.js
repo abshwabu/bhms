@@ -69,6 +69,22 @@ axios.interceptors.request.use(async (config) => {
                     fromOfflineCache: true,
                 });
                 return config;
+            } else {
+                // Graceful fallback for uncached offline GET
+                config.adapter = () => Promise.resolve({
+                    data: {
+                        success: true,
+                        data: [],
+                        message: 'Offline: Data not cached yet.',
+                        is_offline_fallback: true,
+                    },
+                    status: 200,
+                    statusText: 'OK (Offline Fallback)',
+                    headers: {},
+                    config,
+                    fromOfflineCache: true,
+                });
+                return config;
             }
         } else {
             // Outbox mutation
@@ -138,8 +154,9 @@ axios.interceptors.response.use(
             return Promise.reject(error);
         }
 
-        // 2. Network Failure / Offline Fallback (when request attempted but dropped)
-        if (!error.response && config && !config.headers?.['X-HMS-Offline-Replay']) {
+        // 2. Network Failure / Offline Fallback (when request attempted but dropped or 503 offline)
+        const isOfflineNetworkError = !error.response || (error.response && error.response.status === 503 && error.response.data?.offline);
+        if (isOfflineNetworkError && config && !config.headers?.['X-HMS-Offline-Replay']) {
             const method = (config.method || 'get').toLowerCase();
 
             if (method === 'get') {
@@ -148,6 +165,20 @@ axios.interceptors.response.use(
                     console.log('[HMS Offline] Serving fallback cached data for:', config.url);
                     return Promise.resolve({
                         data: cached,
+                        status: 200,
+                        statusText: 'OK (Offline Fallback)',
+                        headers: {},
+                        config,
+                        fromOfflineCache: true,
+                    });
+                } else {
+                    return Promise.resolve({
+                        data: {
+                            success: true,
+                            data: [],
+                            message: 'Offline: Data not cached yet.',
+                            is_offline_fallback: true,
+                        },
                         status: 200,
                         statusText: 'OK (Offline Fallback)',
                         headers: {},

@@ -640,6 +640,9 @@ function getEventTitle(event) {
 }
 
 async function fetchTimeline() {
+  if (!props.patient?.id || props.patient.id === 'undefined') {
+    return;
+  }
   isLoading.value = true;
   try {
     const res = await axios.get(`/api/v1/clinical/patients/${props.patient.id}/ehr-timeline`, {
@@ -654,7 +657,9 @@ async function fetchTimeline() {
     summary.value = data.summary || {};
     rawTimeline.value = data.timeline || [];
   } catch (err) {
-    console.error('Failed to load EHR timeline', err);
+    if (typeof navigator === 'undefined' || navigator.onLine) {
+      console.error('Failed to load EHR timeline', err);
+    }
   } finally {
     isLoading.value = false;
   }

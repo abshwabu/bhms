@@ -502,6 +502,10 @@ async function executePrescriptionCreation(targetStatus, overrideJustification =
 }
 
 async function fetchPatientAllergies() {
+  if (!activePatient.value?.id || activePatient.value.id === 'undefined') {
+    allergies.value = activePatient.value?.allergies || [];
+    return;
+  }
   try {
     const res = await axios.get(`/api/v1/patients/${activePatient.value.id}/allergies`, {
       headers: { 'X-Branch-ID': props.branchId, 'Accept': 'application/json' },
@@ -509,7 +513,7 @@ async function fetchPatientAllergies() {
     allergies.value = res.data.data || [];
   } catch (err) {
     // Fallback if direct patient allergies route not seeded
-    allergies.value = activePatient.value.allergies || [];
+    allergies.value = activePatient.value?.allergies || [];
   }
 }
 

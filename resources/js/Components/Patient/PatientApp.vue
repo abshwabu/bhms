@@ -519,7 +519,7 @@
 
       <!-- Profile View -->
       <PatientProfileView
-        v-else-if="currentView === 'profile' && selectedPatient"
+        v-else-if="currentView === 'profile' && selectedPatient?.id"
         :patient="selectedPatient"
         :branch-id="activeBranchId"
         @back="currentView = 'search'"
@@ -584,7 +584,7 @@
 
       <!-- Doctor & Clinical: Longitudinal EHR Records -->
       <EhrTimelineView
-        v-else-if="currentView === 'ehr' && selectedPatient"
+        v-else-if="currentView === 'ehr' && selectedPatient?.id"
         :patient="selectedPatient"
         :branch-id="activeBranchId"
         @back="currentView = 'doctor_dashboard'"
@@ -594,7 +594,7 @@
 
       <!-- Doctor & Clinical: E-Prescriptions & CDS Warnings -->
       <PrescriptionWriter
-        v-else-if="currentView === 'prescriptions' && selectedPatient"
+        v-else-if="currentView === 'prescriptions' && selectedPatient?.id"
         :patient="selectedPatient"
         :branch-id="activeBranchId"
         @back="currentView = 'ehr'"
@@ -1008,9 +1008,16 @@ let initialPatient = null;
 try {
   const rawPatient = localStorage.getItem('hms_selected_patient');
   if (rawPatient) {
-    initialPatient = JSON.parse(rawPatient);
+    const parsed = JSON.parse(rawPatient);
+    if (parsed && parsed.id && typeof parsed.id === 'string' && parsed.id !== 'undefined' && parsed.id !== 'null') {
+      initialPatient = parsed;
+    } else {
+      localStorage.removeItem('hms_selected_patient');
+    }
   }
-} catch {}
+} catch {
+  localStorage.removeItem('hms_selected_patient');
+}
 
 // Authentication & Tenant Context State
 const initialToken = initialSession?.token || localStorage.getItem('hms_auth_token') || sessionStorage.getItem('hms_auth_token') || null;
@@ -1089,7 +1096,7 @@ function getInitialView() {
   // 1. Check URL Hash (e.g. #billing, #pharmacy, #nursing)
   const hash = window.location.hash.replace(/^#\/?/, '').trim();
   if (hash && viewLabels[hash]) {
-    if ((hash === 'ehr' || hash === 'profile' || hash === 'prescriptions') && !initialPatient) {
+    if ((hash === 'ehr' || hash === 'profile' || hash === 'prescriptions') && (!initialPatient?.id || initialPatient.id === 'undefined')) {
       return 'search';
     }
     return hash;
@@ -1098,7 +1105,7 @@ function getInitialView() {
   // 2. Check localStorage saved view
   const saved = localStorage.getItem('hms_current_view');
   if (saved && viewLabels[saved]) {
-    if ((saved === 'ehr' || saved === 'profile' || saved === 'prescriptions') && !initialPatient) {
+    if ((saved === 'ehr' || saved === 'profile' || saved === 'prescriptions') && (!initialPatient?.id || initialPatient.id === 'undefined')) {
       return 'search';
     }
     return saved;
@@ -1874,7 +1881,11 @@ onMounted(async () => {
   window.addEventListener('hashchange', () => {
     const hash = window.location.hash.replace(/^#\/?/, '').trim();
     if (hash && viewLabels[hash] && canAccessView(hash) && currentView.value !== hash) {
-      currentView.value = hash;
+      if ((hash === 'ehr' || hash === 'profile' || hash === 'prescriptions') && (!selectedPatient.value?.id || selectedPatient.value.id === 'undefined')) {
+        currentView.value = 'search';
+      } else {
+        currentView.value = hash;
+      }
     }
   });
 
