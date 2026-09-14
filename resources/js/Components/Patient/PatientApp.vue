@@ -6,7 +6,7 @@
   />
 
   <!-- Authenticated Hospital Application Portal -->
-  <div v-else class="min-h-screen bg-slate-100/70 font-sans text-slate-800 flex flex-col">
+  <div v-else class="h-screen bg-slate-100/70 font-sans text-slate-800 flex flex-col overflow-hidden">
     <!-- Persistent Support Impersonation Banner -->
     <div
       v-if="isImpersonating"
@@ -41,494 +41,378 @@
       </button>
     </div>
 
-    <div class="flex-1 flex overflow-hidden">
-      <!-- Sidebar Navigation -->
-      <aside class="w-64 bg-slate-900 text-white flex flex-col justify-between shrink-0 shadow-xl">
-      <div>
-        <!-- Brand Header with Tenant Isolation -->
-        <div class="p-6 border-b border-slate-800">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-blue-500/30 shrink-0">
+    <!-- Application Workspace Wrapper -->
+    <div class="flex-1 flex overflow-hidden min-h-0 relative">
+      <!-- Mobile Backdrop Overlay -->
+      <div
+        v-if="isMobileSidebarOpen"
+        @click="isMobileSidebarOpen = false"
+        class="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 lg:hidden transition-opacity"
+      ></div>
+
+      <!-- Collapsible & Responsive Sidebar Navigation -->
+      <aside
+        :class="[
+          'fixed inset-y-0 left-0 z-50 lg:static flex flex-col justify-between shrink-0 bg-slate-900 text-white border-r border-slate-800 shadow-2xl transition-all duration-300 ease-in-out',
+          isSidebarCollapsed ? 'w-20' : 'w-72',
+          isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        ]"
+      >
+        <!-- Brand Header (Pinned, Shrink-0) -->
+        <div class="p-4 border-b border-slate-800/80 shrink-0">
+          <!-- Expanded Header View -->
+          <div v-if="!isSidebarCollapsed" class="space-y-3">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-black text-lg text-white shadow-lg shadow-blue-500/25 shrink-0">
+                  +
+                </div>
+                <div class="min-w-0">
+                  <div class="font-bold text-sm tracking-tight leading-tight truncate text-white">
+                    {{ currentOrganization?.name || 'Metro Health System' }}
+                  </div>
+                  <div class="text-[10px] text-blue-400 font-mono flex items-center gap-1.5 truncate">
+                    <span>{{ currentOrganization?.code || 'MHS' }}</span>
+                    <span>&bull;</span>
+                    <span class="capitalize text-emerald-400">{{ currentOrganization?.plan_tier || 'Enterprise' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mobile Close Button / Desktop Collapse Button -->
+              <div class="flex items-center gap-1 shrink-0">
+                <button
+                  @click="isMobileSidebarOpen = false"
+                  class="lg:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
+                  title="Close Menu"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                <button
+                  @click="toggleSidebarCollapse"
+                  class="hidden lg:flex p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
+                  title="Collapse Sidebar"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Active Facility Branch Selector / Badge -->
+            <div class="p-2 rounded-xl bg-slate-800/70 border border-slate-700/50">
+              <div class="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1">
+                <span class="flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>FACILITY BRANCH</span>
+                </span>
+                <span class="font-mono text-slate-300 font-bold">{{ currentBranch?.code || 'MAIN' }}</span>
+              </div>
+              <select
+                v-if="accessibleBranches && accessibleBranches.length > 1"
+                :value="activeBranchId"
+                @change="handleBranchChange($event.target.value)"
+                class="w-full mt-0.5 bg-slate-900/90 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer"
+              >
+                <option v-for="br in accessibleBranches" :key="br.id" :value="br.id">
+                  {{ br.name }} ({{ br.code }})
+                </option>
+              </select>
+              <div v-else class="text-xs font-semibold text-slate-200 truncate mt-0.5">
+                {{ currentBranch?.name || 'Metro General Hospital' }}
+              </div>
+            </div>
+
+            <!-- Role Context Badge -->
+            <div
+              class="px-2.5 py-1.5 rounded-xl border flex items-center justify-between text-xs"
+              :class="[roleBadgeColor.bg, roleBadgeColor.text, roleBadgeColor.border]"
+            >
+              <div class="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider">
+                <span class="w-1.5 h-1.5 rounded-full" :class="roleBadgeColor.dot"></span>
+                <span>ROLE</span>
+              </div>
+              <span class="font-bold text-[11px] truncate max-w-[130px] capitalize">
+                {{ currentUser?.primary_role || 'Staff' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Collapsed Header View -->
+          <div v-else class="flex flex-col items-center gap-3">
+            <div
+              class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-blue-500/25 shrink-0"
+              :title="currentOrganization?.name || 'Metro Health System'"
+            >
               +
             </div>
-            <div class="min-w-0">
-              <div class="font-extrabold text-base tracking-tight leading-tight truncate text-white">
-                {{ currentOrganization?.name || 'Metro Health System' }}
-              </div>
-              <div class="text-[11px] text-blue-400 font-medium flex items-center gap-1.5 truncate">
-                <span>{{ currentOrganization?.code || 'MHS' }}</span>
-                <span>&bull;</span>
-                <span class="capitalize text-emerald-400">{{ currentOrganization?.plan_tier || 'Enterprise' }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Active Branch Selector / Multi-Tenant Badge -->
-          <div class="mt-4 p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/60">
-            <div class="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1">
-              <span class="flex items-center gap-1.5">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>FACILITY BRANCH</span>
-              </span>
-              <span class="font-mono text-slate-300 font-bold">{{ currentBranch?.code || 'MAIN' }}</span>
-            </div>
-            <select
-              v-if="accessibleBranches && accessibleBranches.length > 1"
-              :value="activeBranchId"
-              @change="handleBranchChange($event.target.value)"
-              class="w-full mt-1 bg-slate-900 border border-slate-700 text-white rounded-lg px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer"
+            <button
+              @click="toggleSidebarCollapse"
+              class="hidden lg:flex p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
+              title="Expand Sidebar"
             >
-              <option v-for="br in accessibleBranches" :key="br.id" :value="br.id">
-                {{ br.name }} ({{ br.code }})
-              </option>
-            </select>
-            <div v-else class="text-xs font-semibold text-slate-200 truncate mt-0.5">
-              {{ currentBranch?.name || 'Metro General Hospital (Main Campus)' }}
-            </div>
-          </div>
-
-          <!-- Active Role Persona Badge -->
-          <div class="mt-2.5 px-2.5 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-between text-xs">
-            <div class="flex items-center gap-1.5 text-slate-400 text-[10px] font-mono uppercase tracking-wider">
-              <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
-              <span>ROLE CONTEXT</span>
-            </div>
-            <span class="font-bold text-sky-300 text-[11px] truncate max-w-[130px]">{{ currentUser?.primary_role || 'Staff' }}</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
         </div>
 
-        <!-- Navigation Links (Filtered strictly by RBAC) -->
-        <nav class="p-4 space-y-1.5 overflow-y-auto max-h-[calc(100vh-210px)]">
-
-          <!-- 1. Patient Intake & Registry (All authenticated staff) -->
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 font-bold">
-            Patient Intake & Records
+        <!-- Quick Filter Input (Expanded mode only) -->
+        <div v-if="!isSidebarCollapsed" class="px-3 pt-3 pb-1 shrink-0">
+          <div class="relative">
+            <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              v-model="searchNav"
+              type="text"
+              placeholder="Search modules..."
+              class="w-full bg-slate-800/80 border border-slate-700/60 rounded-xl pl-8 pr-7 py-1.5 text-xs text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500/70 focus:border-blue-500/70"
+            />
+            <button
+              v-if="searchNav"
+              @click="searchNav = ''"
+              class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs cursor-pointer"
+              title="Clear search"
+            >
+              &times;
+            </button>
           </div>
+        </div>
 
-          <button
-            @click="currentView = 'search'"
-            :class="currentView === 'search' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            Patient Registry & Search
-          </button>
-
-          <button
-            v-if="isReceptionist || isNurse || isHospitalAdmin"
-            @click="openRegistrationModal"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Register Walk-In / Referral
-          </button>
-
-          <!-- 2. Emergency & Trauma (Doctor, Nurse) -->
+        <!-- Scrollable Navigation Items -->
+        <nav class="flex-1 min-h-0 overflow-y-auto px-2.5 py-2 space-y-4">
           <div
-            v-if="isDoctor || isNurse"
-            class="text-[10px] font-mono uppercase tracking-wider text-rose-500 px-3 py-1 mt-3 font-bold flex items-center justify-between"
+            v-for="group in filteredNavGroups"
+            :key="group.id"
+            class="space-y-1"
           >
-            <span>Emergency & Trauma</span>
-            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+            <!-- Group Heading (When Expanded) -->
+            <div
+              v-if="!isSidebarCollapsed"
+              class="text-[10px] font-mono uppercase tracking-wider text-slate-400 px-3 py-1 font-bold flex items-center justify-between"
+            >
+              <span>{{ group.label }}</span>
+            </div>
+            <!-- Subdivider (When Collapsed) -->
+            <div v-else class="h-px bg-slate-800 my-2 mx-1"></div>
+
+            <!-- Group Item Buttons -->
+            <button
+              v-for="item in group.items"
+              :key="item.id"
+              @click="handleNavItemClick(item)"
+              :title="item.label"
+              :class="[
+                'w-full flex items-center rounded-xl text-xs font-medium transition cursor-pointer group relative',
+                isSidebarCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2 text-left',
+                isItemActive(item)
+                  ? (item.activeClass || 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold')
+                  : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+              ]"
+            >
+              <!-- Icon -->
+              <svg
+                class="w-4 h-4 shrink-0 transition-transform group-hover:scale-110"
+                :class="isItemActive(item) ? 'text-white' : 'text-slate-400 group-hover:text-white'"
+                :fill="item.icon === 'paper-airplane' ? 'currentColor' : 'none'"
+                :stroke="item.icon === 'paper-airplane' ? 'none' : 'currentColor'"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  :d="navIcons[item.icon]"
+                />
+              </svg>
+
+              <!-- Label and Badge (Expanded Mode) -->
+              <template v-if="!isSidebarCollapsed">
+                <span class="truncate flex-1">{{ item.label }}</span>
+                <span
+                  v-if="item.badge"
+                  :class="['px-1.5 py-0.5 rounded text-[9px] font-mono font-bold shrink-0', item.badgeClass || 'bg-slate-800 text-slate-300']"
+                >
+                  {{ item.badge }}
+                </span>
+              </template>
+
+              <!-- Active indicator dot for Collapsed Mode -->
+              <span
+                v-if="isSidebarCollapsed && isItemActive(item)"
+                class="absolute right-1 top-1 w-2 h-2 rounded-full bg-white shadow-xs"
+              ></span>
+            </button>
           </div>
 
-          <button
-            v-if="isDoctor || isNurse"
-            @click="currentView = 'emergency'"
-            :class="currentView === 'emergency' ? 'bg-rose-600 text-white font-semibold shadow-sm' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            ER Triage & Ambulance CAD
-          </button>
-
-          <!-- 3. Outpatient & Consultations (Doctor, Receptionist, Nurse) -->
+          <!-- Empty Search State -->
           <div
-            v-if="isDoctor || isReceptionist || isNurse"
-            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
+            v-if="filteredNavGroups.length === 0 && searchNav"
+            class="text-center py-6 px-3 text-xs text-slate-400"
           >
-            Outpatient & Consultations
+            No modules match "<span class="text-slate-200">{{ searchNav }}</span>"
           </div>
-
-          <button
-            v-if="isDoctor || isReceptionist"
-            @click="currentView = 'booking'"
-            :class="currentView === 'booking' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            Booking & Doctor Calendar
-          </button>
-
-          <button
-            v-if="isDoctor || isReceptionist || isNurse"
-            @click="currentView = 'queue'"
-            :class="currentView === 'queue' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-            Queue & TV Waiting Display
-          </button>
-
-          <button
-            v-if="isDoctor"
-            @click="currentView = 'soap'"
-            :class="currentView === 'soap' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            SOAP Consultation Notes
-          </button>
-
-          <button
-            v-if="isDoctor || isReceptionist"
-            @click="currentView = 'referrals'"
-            :class="currentView === 'referrals' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-            </svg>
-            Referral Transfers
-          </button>
-
-          <!-- 4. Doctor & Clinical Medicine (Doctor, Nurse, Pharmacist) -->
-          <div
-            v-if="isDoctor || isNurse || isPharmacist"
-            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
-          >
-            Doctor & Clinical Medicine
-          </div>
-
-          <button
-            v-if="isDoctor"
-            @click="currentView = 'doctor_dashboard'"
-            :class="currentView === 'doctor_dashboard' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            Doctor Dashboard
-          </button>
-
-          <button
-            v-if="isDoctor || isNurse"
-            @click="navigateToEhrTimeline"
-            :class="currentView === 'ehr' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            EHR Clinical Records
-          </button>
-
-          <button
-            v-if="isDoctor || isPharmacist"
-            @click="navigateToPrescriptions"
-            :class="currentView === 'prescriptions' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-            </svg>
-            {{ isPharmacist ? 'Prescriptions Review' : 'E-Prescribe & CDS' }}
-          </button>
-
-          <!-- 5. Pharmacy & Dispensing (Pharmacist ONLY) -->
-          <div
-            v-if="isPharmacist"
-            class="text-[10px] font-mono uppercase tracking-wider text-teal-400 px-3 py-1 mt-3 font-bold"
-          >
-            Pharmacy & Dispensing
-          </div>
-
-          <button
-            v-if="isPharmacist"
-            @click="currentView = 'pharmacy'"
-            :class="currentView === 'pharmacy' ? 'bg-teal-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-            </svg>
-            Pharmacy Master (FEFO)
-          </button>
-
-          <!-- 6. Inpatient & IPD Management (Hospital Admin, Doctor, Nurse, Billing, Receptionist) -->
-          <div
-            v-if="isHospitalAdmin || isDoctor || isNurse || isBilling || isReceptionist"
-            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
-          >
-            Inpatient & IPD Care
-          </div>
-
-          <button
-            v-if="isHospitalAdmin || isDoctor || isNurse || isBilling || isReceptionist"
-            @click="currentView = 'bed_map'"
-            :class="currentView === 'bed_map' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-            </svg>
-            Bed Map & Ward View
-          </button>
-
-          <button
-            v-if="isNurse"
-            @click="currentView = 'nursing'"
-            :class="currentView === 'nursing' ? 'bg-emerald-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-            </svg>
-            Nursing Station (Vitals/MAR)
-          </button>
-
-          <button
-            v-if="isDoctor || isNurse"
-            @click="currentView = 'discharge'"
-            :class="currentView === 'discharge' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Discharge Summaries
-          </button>
-
-          <button
-            v-if="isHospitalAdmin"
-            @click="currentView = 'ipd_analytics'"
-            :class="currentView === 'ipd_analytics' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            Occupancy & ALOS Analytics
-          </button>
-
-          <!-- 7. Billing & Finance (Hospital Admin, Billing Officer) -->
-          <div
-            v-if="isHospitalAdmin || isBilling"
-            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
-          >
-            Billing & Finance
-          </div>
-
-          <button
-            v-if="isHospitalAdmin || isBilling"
-            @click="currentView = 'billing'"
-            :class="currentView === 'billing' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            Billing, Invoicing & Claims
-          </button>
-
-          <!-- 8. Materials & Inventory (Hospital Admin, Nurse, Pharmacist) -->
-          <div
-            v-if="isHospitalAdmin || isNurse || isPharmacist"
-            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
-          >
-            Materials & Assets
-          </div>
-
-          <button
-            v-if="isHospitalAdmin || isNurse || isPharmacist"
-            @click="currentView = 'inventory'"
-            :class="currentView === 'inventory' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-            {{ isNurse ? 'Ward Consumables & Stock' : 'Inventory & Equipment' }}
-          </button>
-
-          <!-- 9. Staff & Rostering (Hospital Admin ONLY) -->
-          <div
-            v-if="isHospitalAdmin"
-            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
-          >
-            Staff & Rostering
-          </div>
-
-          <button
-            v-if="isHospitalAdmin"
-            @click="currentView = 'hr'"
-            :class="currentView === 'hr' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-            HR & Staff Management
-          </button>
-
-          <!-- 10. Executive Intelligence & BI (Hospital Admin, Super Admin) -->
-          <div
-            v-if="isHospitalAdmin || isSuperAdmin"
-            class="text-[10px] font-mono uppercase tracking-wider text-indigo-400 px-3 py-1 mt-3 font-bold"
-          >
-            Intelligence & BI
-          </div>
-
-          <button
-            v-if="isHospitalAdmin || isSuperAdmin"
-            @click="currentView = 'reports'"
-            :class="currentView === 'reports' ? 'bg-indigo-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            Reports & Analytics
-          </button>
-
-          <button
-            v-if="isHospitalAdmin"
-            @click="currentView = 'telegram'"
-            :class="currentView === 'telegram' ? 'bg-sky-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.77-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .27z"/>
-            </svg>
-            Telegram Alerts Engine
-          </button>
-
-          <!-- 11. Governance & Compliance (Hospital Admin, Super Admin) -->
-          <div
-            v-if="isHospitalAdmin || isSuperAdmin"
-            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
-          >
-            Governance & Compliance
-          </div>
-
-          <button
-            v-if="isHospitalAdmin || isSuperAdmin"
-            @click="currentView = 'compliance'"
-            :class="currentView === 'compliance' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-            Compliance & Security (HIPAA)
-          </button>
-
-          <button
-            v-if="isHospitalAdmin || isSuperAdmin"
-            @click="currentView = 'admin'"
-            :class="currentView === 'admin' ? 'bg-cyan-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            System Administration
-          </button>
-
-          <!-- 12. Platform Vendor Control Plane (Super Admin ONLY) -->
-          <div
-            v-if="isSuperAdmin"
-            class="text-[10px] font-mono uppercase tracking-wider text-amber-400 px-3 py-1 mt-3 font-bold flex items-center justify-between"
-          >
-            <span>Platform Vendor</span>
-            <span class="px-1.5 py-0.2 bg-amber-500/20 text-amber-300 rounded text-[9px]">ROOT</span>
-          </div>
-
-          <button
-            v-if="isSuperAdmin"
-            @click="currentView = 'super_admin'"
-            :class="currentView === 'super_admin' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            Super Admin Platform
-          </button>
-
-          <!-- 13. Digital Portals Preview (Hospital Admin ONLY) -->
-          <div
-            v-if="isHospitalAdmin"
-            class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-3 py-1 mt-3 font-bold"
-          >
-            Digital Portals
-          </div>
-
-          <button
-            v-if="isHospitalAdmin"
-            @click="currentView = 'portal'"
-            :class="currentView === 'portal' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            Patient Portal Preview
-          </button>
-
         </nav>
-      </div>
 
-      <!-- User Session Footer with Quick Persona Switcher & Sign Out -->
-      <div class="p-3.5 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 bg-slate-950/40">
-        <div class="flex items-center gap-2.5 overflow-hidden">
-          <div class="w-8 h-8 rounded-full bg-blue-600/30 border border-blue-500/40 flex items-center justify-center font-bold text-white text-xs shrink-0">
-            {{ userInitials }}
+        <!-- User Session Footer (Pinned, Shrink-0) -->
+        <div class="p-3 border-t border-slate-800/80 bg-slate-950/60 shrink-0">
+          <!-- Expanded Footer -->
+          <div v-if="!isSidebarCollapsed" class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div class="w-8 h-8 rounded-full bg-blue-600/30 border border-blue-500/40 flex items-center justify-center font-bold text-white text-xs shrink-0">
+                {{ userInitials }}
+              </div>
+              <div class="min-w-0">
+                <div class="text-white font-medium text-xs truncate">{{ currentUser?.name }}</div>
+                <div class="text-[10px] text-slate-400 font-medium truncate capitalize">{{ currentUser?.primary_role }}</div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1 shrink-0">
+              <button
+                @click="showPersonaModal = true"
+                title="Switch Role Persona"
+                class="px-2 py-1 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-300 rounded-lg text-[10px] font-mono transition cursor-pointer flex items-center gap-1"
+              >
+                <span>⇄</span>
+                <span class="hidden xl:inline">Role</span>
+              </button>
+              <button
+                @click="handleSignOut"
+                title="Sign Out"
+                class="p-1.5 hover:bg-rose-950/80 hover:text-rose-400 text-slate-400 rounded-lg text-xs transition cursor-pointer"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            </div>
           </div>
-          <div class="truncate">
-            <div class="text-white font-medium text-xs truncate">{{ currentUser?.name }}</div>
-            <div class="text-[10px] text-blue-400 font-medium truncate">{{ currentUser?.primary_role }}</div>
+
+          <!-- Collapsed Footer -->
+          <div v-else class="flex flex-col items-center gap-2">
+            <div
+              class="w-8 h-8 rounded-full bg-blue-600/30 border border-blue-500/40 flex items-center justify-center font-bold text-white text-xs shrink-0"
+              :title="currentUser?.name + ' (' + currentUser?.primary_role + ')'"
+            >
+              {{ userInitials }}
+            </div>
+            <div class="flex items-center gap-1">
+              <button
+                @click="showPersonaModal = true"
+                title="Switch Role Persona"
+                class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition cursor-pointer"
+              >
+                ⇄
+              </button>
+              <button
+                @click="handleSignOut"
+                title="Sign Out"
+                class="p-1.5 hover:bg-rose-950/80 hover:text-rose-400 text-slate-400 rounded-lg text-xs transition cursor-pointer"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
+      </aside>
 
-        <div class="flex items-center gap-1 shrink-0">
-          <button
-            @click="showPersonaModal = true"
-            title="Switch RBAC Persona"
-            class="px-2 py-1 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-300 rounded-lg text-[10px] font-mono transition cursor-pointer flex items-center gap-1"
-          >
-            <span>⇄</span>
-            <span class="hidden sm:inline">Role</span>
-          </button>
-          <button
-            @click="handleSignOut"
-            title="Sign Out"
-            class="p-1.5 hover:bg-rose-950 hover:text-rose-400 text-slate-400 rounded-lg text-xs transition cursor-pointer"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
-        </div>
-      </div>
-    </aside>
+      <!-- Right Main Application Container -->
+      <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-100/60">
+        <!-- Top Application Header Bar -->
+        <header class="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between shrink-0 z-10 shadow-xs">
+          <!-- Left: Mobile trigger, Desktop collapse toggle & Breadcrumbs -->
+          <div class="flex items-center gap-3 min-w-0">
+            <!-- Mobile drawer button -->
+            <button
+              @click="isMobileSidebarOpen = true"
+              class="lg:hidden p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer"
+              title="Open Navigation Menu"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
 
-    <!-- Main Content Area -->
-    <main class="flex-1 p-8 max-w-7xl mx-auto overflow-y-auto w-full">
+            <!-- Desktop sidebar collapse button -->
+            <button
+              @click="toggleSidebarCollapse"
+              class="hidden lg:flex p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer"
+              :title="isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'"
+            >
+              <svg class="w-5 h-5 transition-transform" :class="isSidebarCollapsed ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+              </svg>
+            </button>
+
+            <div class="h-5 w-px bg-slate-200 hidden sm:block"></div>
+
+            <!-- Breadcrumbs & Active Module Title -->
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 text-[11px] font-medium text-slate-400 truncate">
+                <span>HMS Enterprise</span>
+                <span>/</span>
+                <span class="text-slate-500">{{ currentViewMeta.category }}</span>
+              </div>
+              <h1 class="text-sm sm:text-base font-bold text-slate-900 tracking-tight truncate leading-tight">
+                {{ currentViewMeta.title }}
+              </h1>
+            </div>
+          </div>
+
+          <!-- Right: Facility branch pill, Role badge, Quick Register button, Role switcher -->
+          <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+            <!-- Branch Pill -->
+            <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span class="font-medium text-slate-600 truncate max-w-[160px]">{{ currentBranch?.name || 'Main Campus' }}</span>
+              <span class="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 font-mono text-[10px] font-bold">{{ currentBranch?.code || 'MAIN' }}</span>
+            </div>
+
+            <!-- Role Pill -->
+            <div
+              class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold"
+              :class="[roleBadgeColor.bg, roleBadgeColor.text, roleBadgeColor.border]"
+            >
+              <span class="w-1.5 h-1.5 rounded-full" :class="roleBadgeColor.dot"></span>
+              <span class="capitalize">{{ currentUser?.primary_role || 'Staff' }}</span>
+            </div>
+
+            <!-- Quick Register Walk-In Patient Button (for receptionist, nurse, admin) -->
+            <button
+              v-if="isReceptionist || isNurse || isHospitalAdmin"
+              @click="openRegistrationModal"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold transition cursor-pointer shadow-sm shadow-blue-500/20"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              <span class="hidden sm:inline">New Patient</span>
+            </button>
+
+            <!-- Quick Role Persona Switcher (Header) -->
+            <button
+              @click="showPersonaModal = true"
+              title="Switch Persona Role"
+              class="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition cursor-pointer flex items-center gap-1 text-xs font-medium"
+            >
+              <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+              <span class="hidden md:inline font-mono text-[11px]">Role</span>
+            </button>
+          </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto overflow-y-auto w-full">
       <!-- Access Restricted Alert if module is unauthorized for active role -->
       <div v-if="!canAccessView(currentView)" class="max-w-xl mx-auto my-16 bg-white border border-amber-200 rounded-3xl p-8 shadow-sm text-center space-y-4">
         <div class="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto text-amber-600 border border-amber-200">
@@ -754,6 +638,7 @@
       </div>
       </template>
     </main>
+    </div>
 
     <!-- Registration Modal -->
     <RegistrationModal
@@ -888,6 +773,37 @@ const accessibleBranches = ref([]);
 const showPersonaModal = ref(false);
 const switchingPersona = ref(null);
 
+// Responsive Sidebar & Navigation State
+const isSidebarCollapsed = ref(localStorage.getItem('hms_sidebar_collapsed') === 'true');
+const isMobileSidebarOpen = ref(false);
+const searchNav = ref('');
+
+function toggleSidebarCollapse() {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value;
+  localStorage.setItem('hms_sidebar_collapsed', isSidebarCollapsed.value ? 'true' : 'false');
+}
+
+function selectView(viewKey) {
+  currentView.value = viewKey;
+  isMobileSidebarOpen.value = false;
+}
+
+function openEhrView() {
+  isMobileSidebarOpen.value = false;
+  navigateToEhrTimeline();
+}
+
+function openPrescriptionsView() {
+  isMobileSidebarOpen.value = false;
+  navigateToPrescriptions();
+}
+
+function matchesNav(label, category = '') {
+  if (!searchNav.value) return true;
+  const q = searchNav.value.toLowerCase().trim();
+  return label.toLowerCase().includes(q) || category.toLowerCase().includes(q);
+}
+
 const activeBranchId = ref('b9ff561a-5396-4309-9b08-3e7b358310e9');
 const currentView = ref('doctor_dashboard');
 const selectedPatient = ref(null);
@@ -954,19 +870,71 @@ const defaultDemoPersonas = [
 ];
 const demoPersonas = ref(defaultDemoPersonas);
 
-// RBAC Role Computations - Strictly Isolated (Zero Cross-Role Leakage)
+// RBAC Role Computations - Strictly Isolated with Managerial Fallback
 const userRoles = computed(() => {
   const r = currentUser.value?.roles || [];
-  return r.map(item => (typeof item === 'string' ? item : item?.name || ''));
+  const list = r.map(item => (typeof item === 'string' ? item : item?.name || ''));
+  if (currentUser.value?.primary_role && !list.includes(currentUser.value.primary_role)) {
+    list.push(currentUser.value.primary_role);
+  }
+  return list;
 });
 const isSuperAdmin = computed(() => !!currentUser.value?.is_super_admin || userRoles.value.includes('super_admin'));
 const isHospitalAdmin = computed(() => !isSuperAdmin.value && (userRoles.value.includes('hospital_admin') || userRoles.value.includes('admin')));
-const isDoctor = computed(() => userRoles.value.includes('doctor'));
-const isNurse = computed(() => userRoles.value.includes('nurse'));
-const isPharmacist = computed(() => userRoles.value.includes('pharmacist'));
-const isBilling = computed(() => userRoles.value.includes('billing_officer'));
-const isReceptionist = computed(() => userRoles.value.includes('receptionist'));
-const isLab = computed(() => userRoles.value.includes('lab_technician') || userRoles.value.includes('radiologist'));
+const isDoctor = computed(() => isHospitalAdmin.value || userRoles.value.includes('doctor'));
+const isNurse = computed(() => isHospitalAdmin.value || userRoles.value.includes('nurse'));
+const isPharmacist = computed(() => isHospitalAdmin.value || userRoles.value.includes('pharmacist'));
+const isBilling = computed(() => isHospitalAdmin.value || userRoles.value.includes('billing_officer'));
+const isReceptionist = computed(() => isHospitalAdmin.value || userRoles.value.includes('receptionist'));
+const isLab = computed(() => isHospitalAdmin.value || userRoles.value.includes('lab_technician') || userRoles.value.includes('radiologist'));
+
+// View Metadata & Breadcrumbs Dictionary
+const viewLabels = {
+  search: { category: 'Patient Care', title: 'Patient Registry & Search' },
+  profile: { category: 'Patient Care', title: 'Patient Medical Profile' },
+  emergency: { category: 'Emergency Care', title: 'ER Triage & CAD Ambulance Dispatch' },
+  doctor_dashboard: { category: 'Clinical Medicine', title: 'Doctor Clinical Dashboard' },
+  ehr: { category: 'Clinical Medicine', title: 'Comprehensive EHR Timeline' },
+  soap: { category: 'Clinical Medicine', title: 'SOAP Consultation Notes' },
+  prescriptions: { category: 'Clinical Medicine', title: 'E-Prescriptions & Decision Support' },
+  booking: { category: 'Outpatient & OPD', title: 'Doctor Booking Calendar' },
+  queue: { category: 'Outpatient & OPD', title: 'OPD Queue Tokens & TV Display' },
+  referrals: { category: 'Outpatient & OPD', title: 'Clinical Referral Transfers' },
+  bed_map: { category: 'Inpatient & IPD', title: 'Visual Bed Map & Ward Allocation' },
+  nursing: { category: 'Inpatient & IPD', title: 'Nursing Station (Vitals & MAR)' },
+  discharge: { category: 'Inpatient & IPD', title: 'Discharge Summary Generator' },
+  ipd_analytics: { category: 'Inpatient & IPD', title: 'Occupancy & ALOS Analytics' },
+  laboratory: { category: 'Diagnostics', title: 'Diagnostic Laboratory Worklist' },
+  radiology: { category: 'Diagnostics', title: 'Radiology PACS / RIS Imaging' },
+  pharmacy: { category: 'Pharmacy', title: 'Pharmacy Master (FEFO Dispensing)' },
+  billing: { category: 'Finance', title: 'Billing, Invoicing & Insurance Claims' },
+  inventory: { category: 'Materials', title: 'Supplies & Biomedical Equipment' },
+  hr: { category: 'Human Resources', title: 'Staff Directory, Shifts & Rostering' },
+  reports: { category: 'Executive BI', title: 'Hospital Intelligence & Analytics' },
+  telegram: { category: 'Alerts', title: 'Telegram Real-Time Notification Engine' },
+  compliance: { category: 'Governance', title: 'HIPAA Compliance & Security Audits' },
+  admin: { category: 'Administration', title: 'System Administration & Master Data' },
+  super_admin: { category: 'Vendor Control', title: 'Super Admin Multi-Tenant Platform' },
+  portal: { category: 'Digital Portals', title: 'Patient Portal Experience Preview' },
+};
+
+const currentViewMeta = computed(() => {
+  return viewLabels[currentView.value] || {
+    category: 'Hospital Management',
+    title: currentView.value ? currentView.value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Dashboard',
+  };
+});
+
+// Role Badge Color Styling
+const roleBadgeColor = computed(() => {
+  if (isSuperAdmin.value) return { bg: 'bg-amber-500/15', text: 'text-amber-300', dot: 'bg-amber-400', border: 'border-amber-500/30' };
+  if (userRoles.value.includes('hospital_admin') || userRoles.value.includes('admin')) return { bg: 'bg-purple-500/15', text: 'text-purple-300', dot: 'bg-purple-400', border: 'border-purple-500/30' };
+  if (userRoles.value.includes('doctor')) return { bg: 'bg-sky-500/15', text: 'text-sky-300', dot: 'bg-sky-400', border: 'border-sky-500/30' };
+  if (userRoles.value.includes('nurse')) return { bg: 'bg-emerald-500/15', text: 'text-emerald-300', dot: 'bg-emerald-400', border: 'border-emerald-500/30' };
+  if (userRoles.value.includes('pharmacist')) return { bg: 'bg-teal-500/15', text: 'text-teal-300', dot: 'bg-teal-400', border: 'border-teal-500/30' };
+  if (userRoles.value.includes('billing_officer')) return { bg: 'bg-amber-500/15', text: 'text-amber-300', dot: 'bg-amber-400', border: 'border-amber-500/30' };
+  return { bg: 'bg-blue-500/15', text: 'text-blue-300', dot: 'bg-blue-400', border: 'border-blue-500/30' };
+});
 
 // User Initials Display
 const userInitials = computed(() => {
@@ -993,22 +961,24 @@ function getDefaultViewForRole(user) {
 // Check Module Authorization strictly by Role Whitelist
 function canAccessView(view) {
   if (!currentUser.value) return false;
+  if (isSuperAdmin.value) return true;
+  if (isHospitalAdmin.value && view !== 'super_admin') return true;
+
   switch (view) {
     case 'super_admin':
-      return isSuperAdmin.value;
+      return false;
     case 'admin':
     case 'compliance':
     case 'reports':
-      return isHospitalAdmin.value || isSuperAdmin.value;
     case 'telegram':
     case 'hr':
     case 'portal':
     case 'ipd_analytics':
-      return isHospitalAdmin.value;
+      return false;
     case 'billing':
-      return isHospitalAdmin.value || isBilling.value;
+      return isBilling.value;
     case 'inventory':
-      return isHospitalAdmin.value || isNurse.value || isPharmacist.value;
+      return isNurse.value || isPharmacist.value;
     case 'pharmacy':
       return isPharmacist.value;
     case 'prescriptions':
@@ -1021,7 +991,7 @@ function canAccessView(view) {
     case 'nursing':
       return isNurse.value;
     case 'bed_map':
-      return isHospitalAdmin.value || isDoctor.value || isNurse.value || isBilling.value || isReceptionist.value;
+      return isDoctor.value || isNurse.value || isBilling.value || isReceptionist.value;
     case 'discharge':
     case 'emergency':
       return isDoctor.value || isNurse.value;
@@ -1038,6 +1008,328 @@ function canAccessView(view) {
       return true;
     default:
       return false;
+  }
+}
+
+// Sidebar Navigation Icons (Clean, specialized SVGs)
+const navIcons = {
+  users: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z',
+  'user-plus': 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z',
+  bolt: 'M13 10V3L4 14h7v7l9-11h-7z',
+  calendar: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+  bell: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9',
+  'clipboard-list': 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+  'switch-horizontal': 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4',
+  'chart-bar': 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
+  'folder-medical': 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
+  pill: 'M10.5 4.5a4.95 4.95 0 017 7L8.5 20.5a4.95 4.95 0 01-7-7l9-9zm-2 5l7 7',
+  'view-grid': 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z',
+  'heart-pulse': 'M3 12h4l3 8 4-16 3 8h4',
+  'document-check': 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+  'chart-pie': 'M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z',
+  beaker: 'M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z',
+  camera: 'M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M15 13a3 3 0 11-6 0 3 3 0 016 0z',
+  shop: 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z',
+  cube: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
+  'credit-card': 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',
+  'user-group': 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
+  'presentation-chart': 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+  'paper-airplane': 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.77-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .27z',
+  'shield-check': 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
+  cog: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4',
+  server: 'M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01',
+  'external-link': 'M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14',
+};
+
+// Grouped Navigation Structure strictly isolated by RBAC
+const navigationGroups = computed(() => [
+  {
+    id: 'intake',
+    label: 'Patient Care',
+    items: [
+      {
+        id: 'search',
+        view: 'search',
+        label: 'Patient Registry',
+        icon: 'users',
+        canAccess: canAccessView('search'),
+      },
+      {
+        id: 'register',
+        action: 'register',
+        label: 'Register Walk-In',
+        icon: 'user-plus',
+        canAccess: isReceptionist.value || isNurse.value || isHospitalAdmin.value,
+      },
+      {
+        id: 'emergency',
+        view: 'emergency',
+        label: 'ER Triage & Ambulance',
+        icon: 'bolt',
+        badge: 'ER',
+        badgeClass: 'bg-rose-500/25 text-rose-300 font-bold',
+        activeClass: 'bg-rose-600 text-white shadow-lg shadow-rose-600/30',
+        canAccess: canAccessView('emergency'),
+      },
+    ],
+  },
+  {
+    id: 'opd',
+    label: 'Outpatient & OPD',
+    items: [
+      {
+        id: 'booking',
+        view: 'booking',
+        label: 'Doctor Calendar',
+        icon: 'calendar',
+        canAccess: canAccessView('booking'),
+      },
+      {
+        id: 'queue',
+        view: 'queue',
+        label: 'Queue & TV Display',
+        icon: 'bell',
+        canAccess: canAccessView('queue'),
+      },
+      {
+        id: 'soap',
+        view: 'soap',
+        label: 'SOAP Consultation',
+        icon: 'clipboard-list',
+        canAccess: canAccessView('soap'),
+      },
+      {
+        id: 'referrals',
+        view: 'referrals',
+        label: 'Referral Transfers',
+        icon: 'switch-horizontal',
+        canAccess: canAccessView('referrals'),
+      },
+    ],
+  },
+  {
+    id: 'clinical',
+    label: 'Clinical Medicine',
+    items: [
+      {
+        id: 'doctor_dashboard',
+        view: 'doctor_dashboard',
+        label: 'Doctor Dashboard',
+        icon: 'chart-bar',
+        canAccess: canAccessView('doctor_dashboard'),
+      },
+      {
+        id: 'ehr',
+        action: 'ehr',
+        view: 'ehr',
+        label: 'EHR Clinical Records',
+        icon: 'folder-medical',
+        canAccess: canAccessView('ehr'),
+      },
+      {
+        id: 'prescriptions',
+        action: 'prescriptions',
+        view: 'prescriptions',
+        label: isPharmacist.value ? 'Prescriptions Review' : 'E-Prescriptions & CDS',
+        icon: 'pill',
+        canAccess: canAccessView('prescriptions'),
+      },
+    ],
+  },
+  {
+    id: 'ipd',
+    label: 'Inpatient & IPD',
+    items: [
+      {
+        id: 'bed_map',
+        view: 'bed_map',
+        label: 'Bed Map & Wards',
+        icon: 'view-grid',
+        canAccess: canAccessView('bed_map'),
+      },
+      {
+        id: 'nursing',
+        view: 'nursing',
+        label: 'Nursing Station (Vitals)',
+        icon: 'heart-pulse',
+        activeClass: 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30',
+        canAccess: canAccessView('nursing'),
+      },
+      {
+        id: 'discharge',
+        view: 'discharge',
+        label: 'Discharge Summaries',
+        icon: 'document-check',
+        canAccess: canAccessView('discharge'),
+      },
+      {
+        id: 'ipd_analytics',
+        view: 'ipd_analytics',
+        label: 'Occupancy & ALOS',
+        icon: 'chart-pie',
+        canAccess: canAccessView('ipd_analytics'),
+      },
+    ],
+  },
+  {
+    id: 'diagnostics',
+    label: 'Diagnostics & Labs',
+    items: [
+      {
+        id: 'laboratory',
+        view: 'laboratory',
+        label: 'Diagnostic Laboratory',
+        icon: 'beaker',
+        activeClass: 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30',
+        canAccess: canAccessView('laboratory'),
+      },
+      {
+        id: 'radiology',
+        view: 'radiology',
+        label: 'Radiology PACS / RIS',
+        icon: 'camera',
+        activeClass: 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30',
+        canAccess: canAccessView('radiology'),
+      },
+    ],
+  },
+  {
+    id: 'pharmacy_materials',
+    label: 'Pharmacy & Supplies',
+    items: [
+      {
+        id: 'pharmacy',
+        view: 'pharmacy',
+        label: 'Pharmacy Master (FEFO)',
+        icon: 'shop',
+        activeClass: 'bg-teal-600 text-white shadow-lg shadow-teal-600/30',
+        canAccess: canAccessView('pharmacy'),
+      },
+      {
+        id: 'inventory',
+        view: 'inventory',
+        label: isNurse.value ? 'Ward Consumables' : 'Inventory & Equipment',
+        icon: 'cube',
+        canAccess: canAccessView('inventory'),
+      },
+    ],
+  },
+  {
+    id: 'finance',
+    label: 'Finance & Claims',
+    items: [
+      {
+        id: 'billing',
+        view: 'billing',
+        label: 'Billing & Invoicing',
+        icon: 'credit-card',
+        activeClass: 'bg-amber-600 text-white shadow-lg shadow-amber-600/30',
+        canAccess: canAccessView('billing'),
+      },
+    ],
+  },
+  {
+    id: 'management',
+    label: 'Administration & BI',
+    items: [
+      {
+        id: 'hr',
+        view: 'hr',
+        label: 'HR & Staff Rosters',
+        icon: 'user-group',
+        canAccess: canAccessView('hr'),
+      },
+      {
+        id: 'reports',
+        view: 'reports',
+        label: 'Executive Reports & BI',
+        icon: 'presentation-chart',
+        activeClass: 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30',
+        canAccess: canAccessView('reports'),
+      },
+      {
+        id: 'telegram',
+        view: 'telegram',
+        label: 'Telegram Alert Engine',
+        icon: 'paper-airplane',
+        activeClass: 'bg-sky-600 text-white shadow-lg shadow-sky-600/30',
+        canAccess: canAccessView('telegram'),
+      },
+      {
+        id: 'compliance',
+        view: 'compliance',
+        label: 'HIPAA & Compliance',
+        icon: 'shield-check',
+        activeClass: 'bg-amber-600 text-white shadow-lg shadow-amber-600/30',
+        canAccess: canAccessView('compliance'),
+      },
+      {
+        id: 'admin',
+        view: 'admin',
+        label: 'System Administration',
+        icon: 'cog',
+        activeClass: 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/30',
+        canAccess: canAccessView('admin'),
+      },
+      {
+        id: 'super_admin',
+        view: 'super_admin',
+        label: 'Super Admin Multi-Tenant',
+        icon: 'server',
+        badge: 'ROOT',
+        badgeClass: 'bg-amber-500/25 text-amber-300 font-bold',
+        activeClass: 'bg-amber-600 text-white shadow-lg shadow-amber-600/30',
+        canAccess: canAccessView('super_admin'),
+      },
+      {
+        id: 'portal',
+        view: 'portal',
+        label: 'Patient Portal Preview',
+        icon: 'external-link',
+        canAccess: canAccessView('portal'),
+      },
+    ],
+  },
+]);
+
+const filteredNavGroups = computed(() => {
+  return navigationGroups.value
+    .map(group => {
+      const filteredItems = group.items.filter(item => {
+        if (!item.canAccess) return false;
+        if (!searchNav.value) return true;
+        const q = searchNav.value.toLowerCase().trim();
+        return item.label.toLowerCase().includes(q) || group.label.toLowerCase().includes(q);
+      });
+      return {
+        ...group,
+        items: filteredItems,
+      };
+    })
+    .filter(group => group.items.length > 0);
+});
+
+function isItemActive(item) {
+  if (!item.view) return false;
+  return currentView.value === item.view;
+}
+
+function handleNavItemClick(item) {
+  if (item.action === 'register') {
+    openRegistrationModal();
+    isMobileSidebarOpen.value = false;
+    return;
+  }
+  if (item.action === 'ehr') {
+    openEhrView();
+    return;
+  }
+  if (item.action === 'prescriptions') {
+    openPrescriptionsView();
+    return;
+  }
+  if (item.view) {
+    selectView(item.view);
   }
 }
 
