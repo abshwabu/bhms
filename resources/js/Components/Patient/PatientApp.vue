@@ -1013,11 +1013,12 @@ try {
 } catch {}
 
 // Authentication & Tenant Context State
-const currentUser = ref(initialSession?.user || null);
+const initialToken = initialSession?.token || localStorage.getItem('hms_auth_token') || sessionStorage.getItem('hms_auth_token') || null;
+const currentUser = ref((initialToken && initialSession?.user) ? initialSession.user : null);
 const currentOrganization = ref(initialSession?.organization || null);
 const currentBranch = ref(initialSession?.default_branch || null);
 const accessibleBranches = ref(initialSession?.accessible_branches || []);
-const activeBranchId = ref(initialSession?.default_branch?.id || initialSession?.accessible_branches?.[0]?.id || 'b9ff561a-5396-4309-9b08-3e7b358310e9');
+const activeBranchId = ref(initialSession?.default_branch?.id || initialSession?.accessible_branches?.[0]?.id || '84d7387e-7b2e-4533-b3e8-139e52aecb8b');
 const selectedPatient = ref(initialPatient);
 const showPersonaModal = ref(false);
 const switchingPersona = ref(null);
@@ -1030,8 +1031,8 @@ function formatMutationTime(timestamp) {
 }
 
 // Configure early axios headers if token exists in session
-if (initialSession?.token && window.axios) {
-  window.axios.defaults.headers.common['Authorization'] = `Bearer ${initialSession.token}`;
+if (initialToken && window.axios) {
+  window.axios.defaults.headers.common['Authorization'] = `Bearer ${initialToken}`;
   if (activeBranchId.value) {
     window.axios.defaults.headers.common['X-Branch-ID'] = activeBranchId.value;
   }

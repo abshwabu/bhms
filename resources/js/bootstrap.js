@@ -14,7 +14,7 @@ if (tokenMeta) {
 
 // Request Interceptor: Attach credentials and handle offline bypass
 axios.interceptors.request.use(async (config) => {
-    let token = sessionStorage.getItem('hms_auth_token');
+    let token = sessionStorage.getItem('hms_auth_token') || localStorage.getItem('hms_auth_token');
     let branchId = null;
 
     try {
@@ -33,12 +33,24 @@ axios.interceptors.request.use(async (config) => {
         // ignore parse error
     }
 
-    if (token && !config.headers.Authorization) {
-        config.headers.Authorization = `Bearer ${token}`;
+    if (token) {
+        if (config.headers && typeof config.headers.set === 'function') {
+            if (!config.headers.has('Authorization')) {
+                config.headers.set('Authorization', `Bearer ${token}`);
+            }
+        } else if (config.headers && !config.headers.Authorization) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
     }
 
-    if (branchId && !config.headers['X-Branch-ID']) {
-        config.headers['X-Branch-ID'] = branchId;
+    if (branchId) {
+        if (config.headers && typeof config.headers.set === 'function') {
+            if (!config.headers.has('X-Branch-ID')) {
+                config.headers.set('X-Branch-ID', branchId);
+            }
+        } else if (config.headers && !config.headers['X-Branch-ID']) {
+            config.headers['X-Branch-ID'] = branchId;
+        }
     }
 
     // Offline interceptor: if navigator is explicitly offline, serve from cache or outbox
@@ -117,8 +129,10 @@ axios.interceptors.response.use(
             if (!url.includes('/api/v1/auth/login')) {
                 console.warn('[HMS Auth] Session unauthorized (401). Clearing stale credentials.');
                 sessionStorage.removeItem('hms_auth_token');
+                localStorage.removeItem('hms_auth_token');
                 localStorage.removeItem('hms_portal_session');
                 delete axios.defaults.headers.common['Authorization'];
+                delete axios.defaults.headers.common['X-Branch-ID'];
                 window.dispatchEvent(new CustomEvent('hms:unauthorized'));
             }
             return Promise.reject(error);

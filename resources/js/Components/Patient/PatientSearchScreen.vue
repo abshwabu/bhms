@@ -202,6 +202,10 @@ async function fetchPatients() {
     totalCount.value = res.data.meta?.pagination?.total || patients.value.length;
     searchLatencyMs.value = Math.round(performance.now() - startTime);
   } catch (err) {
+    if (err.response?.status === 401) {
+      // Handled globally by auth interceptor (hms:unauthorized redirects to clean login)
+      return;
+    }
     console.error('Failed to fetch patients', err);
   } finally {
     isLoading.value = false;
