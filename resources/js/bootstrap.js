@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { saveApiResponse, getApiResponse, addOutboxMutation } from './offline/offlineStorage';
 
 window.axios = axios;
 
@@ -11,8 +12,8 @@ if (tokenMeta) {
     axios.defaults.headers.common['X-CSRF-TOKEN'] = tokenMeta.getAttribute('content');
 }
 
-// Request Interceptor: Automatically attach Sanctum Bearer Token and Branch ID
-axios.interceptors.request.use((config) => {
+// Request Interceptor: Attach credentials and handle offline bypass
+axios.interceptors.request.use(async (config) => {
     let token = sessionStorage.getItem('hms_auth_token');
     let branchId = null;
 
@@ -40,18 +41,79 @@ axios.interceptors.request.use((config) => {
         config.headers['X-Branch-ID'] = branchId;
     }
 
+    // Offline interceptor: if navigator is explicitly offline, serve from cache or outbox
+    if (typeof navigator !== 'undefined' && !navigator.onLine && !config.headers['X-HMS-Offline-Replay']) {
+        const method = (config.method || 'get').toLowerCase();
+        
+        if (method === 'get') {
+            const cached = await getApiResponse(config.url);
+            if (cached) {
+                config.adapter = () => Promise.resolve({
+                    data: cached,
+                    status: 200,
+                    statusText: 'OK (Offline Cache)',
+                    headers: {},
+                    config,
+                    fromOfflineCache: true,
+                });
+                return config;
+            }
+        } else {
+            // Outbox mutation
+            let payload = config.data;
+            if (typeof payload === 'string') {
+                try { payload = JSON.parse(payload); } catch {}
+            }
+            const summary = generateSummary(config.url, method, payload);
+            const mutation = await addOutboxMutation({
+                url: config.url,
+                method,
+                data: payload,
+                headers: config.headers,
+                summary,
+            });
+
+            config.adapter = () => Promise.resolve({
+                data: {
+                    success: true,
+                    message: 'Saved locally in offline queue. Will sync automatically once online.',
+                    id: mutation.id,
+                    data: payload,
+                    is_offline_queued: true,
+                },
+                status: 200,
+                statusText: 'OK (Offline Queued)',
+                config,
+            });
+            return config;
+        }
+    }
+
     return config;
 }, (error) => {
     return Promise.reject(error);
 });
 
-// Response Interceptor: Automatically handle 401 Unauthorized
+// Response Interceptor: Cache GETs & Catch Network Drops
 axios.interceptors.response.use(
-    (response) => response,
-    (error) => {
+    (response) => {
+        // Automatically cache successful GET API responses for offline access
+        if (
+            response.config?.method?.toLowerCase() === 'get' &&
+            response.status === 200 &&
+            response.data &&
+            !response.fromOfflineCache
+        ) {
+            saveApiResponse(response.config.url, response.data);
+        }
+        return response;
+    },
+    async (error) => {
+        const config = error.config;
+
+        // 1. Session unauthorized (401)
         if (error.response && error.response.status === 401) {
-            const url = error.config?.url || '';
-            // Ignore 401 on login endpoint (wrong password)
+            const url = config?.url || '';
             if (!url.includes('/api/v1/auth/login')) {
                 console.warn('[HMS Auth] Session unauthorized (401). Clearing stale credentials.');
                 sessionStorage.removeItem('hms_auth_token');
@@ -59,7 +121,78 @@ axios.interceptors.response.use(
                 delete axios.defaults.headers.common['Authorization'];
                 window.dispatchEvent(new CustomEvent('hms:unauthorized'));
             }
+            return Promise.reject(error);
         }
+
+        // 2. Network Failure / Offline Fallback (when request attempted but dropped)
+        if (!error.response && config && !config.headers?.['X-HMS-Offline-Replay']) {
+            const method = (config.method || 'get').toLowerCase();
+
+            if (method === 'get') {
+                const cached = await getApiResponse(config.url);
+                if (cached) {
+                    console.log('[HMS Offline] Serving fallback cached data for:', config.url);
+                    return Promise.resolve({
+                        data: cached,
+                        status: 200,
+                        statusText: 'OK (Offline Fallback)',
+                        headers: {},
+                        config,
+                        fromOfflineCache: true,
+                    });
+                }
+            } else {
+                let payload = config.data;
+                if (typeof payload === 'string') {
+                    try { payload = JSON.parse(payload); } catch {}
+                }
+                const summary = generateSummary(config.url, method, payload);
+                const mutation = await addOutboxMutation({
+                    url: config.url,
+                    method,
+                    data: payload,
+                    headers: config.headers,
+                    summary,
+                });
+
+                console.log('[HMS Offline] Network dropped; mutation queued:', summary);
+
+                return Promise.resolve({
+                    data: {
+                        success: true,
+                        message: 'Saved locally in offline queue. Will sync automatically once online.',
+                        id: mutation.id,
+                        data: payload,
+                        is_offline_queued: true,
+                    },
+                    status: 200,
+                    statusText: 'OK (Offline Queued)',
+                    config,
+                });
+            }
+        }
+
         return Promise.reject(error);
     }
 );
+
+function generateSummary(url, method, data) {
+    const upperMethod = method.toUpperCase();
+    if (url.includes('/patients') && upperMethod === 'POST') {
+        const name = `${data?.first_name || ''} ${data?.last_name || 'Walk-In Patient'}`.trim();
+        return `Register Patient: ${name}`;
+    }
+    if (url.includes('/vitals') || url.includes('/nursing')) {
+        return 'Record Patient Vitals / Medication Admin';
+    }
+    if (url.includes('/prescriptions')) {
+        return 'E-Prescription Order';
+    }
+    if (url.includes('/diagnostic-orders') || url.includes('/lab')) {
+        return 'Diagnostic Laboratory / Radiology Order';
+    }
+    if (url.includes('/queue')) {
+        return 'OPD Queue Ticket';
+    }
+    return `${upperMethod} ${url}`;
+}

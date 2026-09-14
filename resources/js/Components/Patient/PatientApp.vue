@@ -41,6 +41,40 @@
       </button>
     </div>
 
+    <!-- Persistent Offline Clinical Mode Warning Banner -->
+    <div
+      v-if="!isOnline"
+      class="bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 text-white px-6 py-2 shadow-md flex items-center justify-between gap-4 z-40 shrink-0 border-b border-amber-500/50"
+    >
+      <div class="flex items-center gap-3">
+        <div class="w-7 h-7 rounded-lg bg-amber-500/40 flex items-center justify-center animate-pulse shrink-0">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 4.243a9 9 0 01-12.728 0m0 0l2.829-2.829m-2.829 2.829L3 21m2.829-5.657a5 5 0 010-7.072m0 0l2.829 2.829m4.243-4.243L12 3m0 0l-1.414 1.414" />
+          </svg>
+        </div>
+        <div>
+          <div class="text-xs font-black tracking-wide uppercase flex items-center gap-2">
+            <span>Offline Clinical Mode Active</span>
+            <span class="px-2 py-0.5 bg-black/30 rounded text-[10px] font-mono font-normal">Local Storage Enabled</span>
+            <span v-if="pendingSyncCount > 0" class="px-2 py-0.5 bg-amber-900/60 rounded text-[10px] font-mono font-bold">{{ pendingSyncCount }} pending queued</span>
+          </div>
+          <div class="text-[11px] text-amber-100">
+            Network disconnected. Clinical observations, vitals, and registrations are queued locally and will auto-sync on reconnect.
+          </div>
+        </div>
+      </div>
+
+      <button
+        @click="showSyncDrawer = true"
+        class="px-3.5 py-1.5 bg-white hover:bg-amber-50 active:bg-amber-100 text-amber-950 rounded-lg text-xs font-bold transition cursor-pointer shadow-sm shrink-0 flex items-center gap-1.5"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        <span>Sync Center ({{ pendingSyncCount }})</span>
+      </button>
+    </div>
+
     <!-- Application Workspace Wrapper -->
     <div class="flex-1 flex overflow-hidden min-h-0 relative">
       <!-- Mobile Backdrop Overlay -->
@@ -397,6 +431,34 @@
               <span class="hidden sm:inline">New Patient</span>
             </button>
 
+            <!-- Network / Outbox Status Badge -->
+            <button
+              @click="showSyncDrawer = true"
+              :title="!isOnline ? 'Offline: Clinical changes queued locally' : (pendingSyncCount > 0 ? `${pendingSyncCount} pending changes queued` : 'Online: Connected to Hospital Server')"
+              class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition cursor-pointer"
+              :class="[
+                !isOnline
+                  ? 'bg-amber-500/10 border-amber-500/40 text-amber-700 hover:bg-amber-500/20'
+                  : (pendingSyncCount > 0
+                      ? 'bg-sky-500/10 border-sky-500/30 text-sky-700 hover:bg-sky-500/20'
+                      : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 hover:bg-emerald-500/20')
+              ]"
+            >
+              <span
+                class="w-2 h-2 rounded-full"
+                :class="[
+                  !isOnline
+                    ? 'bg-amber-500 animate-pulse'
+                    : (isSyncing
+                        ? 'bg-sky-500 animate-ping'
+                        : (pendingSyncCount > 0 ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'))
+                ]"
+              ></span>
+              <span class="text-[11px] font-mono font-bold">
+                {{ !isOnline ? 'Offline' : (isSyncing ? 'Syncing...' : (pendingSyncCount > 0 ? `${pendingSyncCount} Queued` : 'Live')) }}
+              </span>
+            </button>
+
             <!-- Quick Role Persona Switcher (Header) -->
             <button
               @click="showPersonaModal = true"
@@ -730,6 +792,163 @@
         </div>
       </div>
     </div>
+
+    <!-- Offline Sync Center Modal -->
+    <div
+      v-if="showSyncDrawer"
+      class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+      @click.self="showSyncDrawer = false"
+    >
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative text-slate-100 flex flex-col max-h-[85vh]">
+        <!-- Header -->
+        <div class="flex items-start justify-between pb-4 border-b border-slate-800 shrink-0">
+          <div>
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20 uppercase tracking-wider">
+                Mutation Outbox
+              </span>
+              <span
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold"
+                :class="isOnline ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'"
+              >
+                <span class="w-1.5 h-1.5 rounded-full" :class="isOnline ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'"></span>
+                {{ isOnline ? 'Network Online' : 'Network Offline' }}
+              </span>
+            </div>
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+              <span>Offline Sync Center</span>
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">
+              All clinical records queued offline are stored in IndexedDB and synced sequentially.
+            </p>
+          </div>
+          <button
+            @click="showSyncDrawer = false"
+            class="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition cursor-pointer"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Status Bar & Actions -->
+        <div class="py-4 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-3 shrink-0">
+          <div class="space-y-0.5">
+            <div class="text-xs text-slate-300 flex items-center gap-2">
+              <span>Pending Outbox: <strong class="text-white font-mono">{{ pendingSyncCount }}</strong> record(s)</span>
+              <span v-if="lastSyncTime" class="text-slate-500">&bull; Last synced at {{ lastSyncTime }}</span>
+            </div>
+            <div v-if="syncStatusMessage" class="text-[11px] text-sky-400 font-mono">
+              {{ syncStatusMessage }}
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              @click="refreshPendingCount"
+              class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-300 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+              title="Refresh queue"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Refresh</span>
+            </button>
+            <button
+              @click="syncOutbox"
+              :disabled="!isOnline || isSyncing || pendingSyncCount === 0"
+              class="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm shadow-blue-600/30"
+            >
+              <svg
+                v-if="isSyncing"
+                class="w-3.5 h-3.5 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <svg
+                v-else
+                class="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <span>{{ isSyncing ? 'Syncing...' : 'Sync Now' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Pending Items List -->
+        <div class="flex-1 overflow-y-auto py-4 space-y-2.5 custom-scrollbar-dark min-h-[160px]">
+          <div v-if="pendingItems.length === 0" class="py-12 text-center space-y-3">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center mx-auto">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <div class="text-sm font-bold text-slate-200">All Changes Synchronized</div>
+              <p class="text-xs text-slate-400 max-w-sm mx-auto mt-1">
+                Your local clinical workspace is up to date with the hospital database. Any new offline inputs will queue here automatically.
+              </p>
+            </div>
+          </div>
+
+          <div
+            v-for="item in pendingItems"
+            :key="item.id"
+            class="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80 hover:border-slate-700/80 transition flex items-center justify-between gap-3"
+          >
+            <div class="min-w-0 flex-1 space-y-1">
+              <div class="flex items-center gap-2">
+                <span
+                  class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold"
+                  :class="{
+                    'bg-blue-500/20 text-blue-400 border border-blue-500/30': item.method === 'POST',
+                    'bg-amber-500/20 text-amber-400 border border-amber-500/30': item.method === 'PUT' || item.method === 'PATCH',
+                    'bg-rose-500/20 text-rose-400 border border-rose-500/30': item.method === 'DELETE',
+                  }"
+                >
+                  {{ item.method }}
+                </span>
+                <span class="text-xs font-semibold text-slate-200 truncate">{{ item.summary }}</span>
+              </div>
+              <div class="flex items-center gap-2 text-[10px] text-slate-500 font-mono truncate">
+                <span>{{ formatMutationTime(item.timestamp) }}</span>
+                <span>&bull;</span>
+                <span class="truncate">{{ item.url }}</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <span class="px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full text-[10px] font-mono">
+                Queued
+              </span>
+              <button
+                @click="discardPendingItem(item.id)"
+                class="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                title="Discard pending change"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer Notice -->
+        <div class="pt-3 border-t border-slate-800 text-[11px] text-slate-500 flex items-center justify-between shrink-0">
+          <span>Storage Engine: IndexedDB (hms_offline_db)</span>
+          <span class="font-mono">Auto-sync on reconnect: ON</span>
+        </div>
+      </div>
+    </div>
     </div>
   </div>
 </template>
@@ -764,6 +983,17 @@ import ComplianceMasterView from '../Compliance/ComplianceMasterView.vue';
 import AdministrationMasterView from '../Administration/AdministrationMasterView.vue';
 import TelegramManagementView from '../Telegram/TelegramManagementView.vue';
 import SuperAdminMasterView from '../SuperAdmin/SuperAdminMasterView.vue';
+import {
+  isOnline,
+  pendingSyncCount,
+  isSyncing,
+  lastSyncTime,
+  syncStatusMessage,
+  pendingItems,
+  syncOutbox,
+  discardPendingItem,
+  refreshPendingCount,
+} from '../../offline/syncManager';
 
 // Synchronous Session & State Rehydration (prevents flash & preserves active module on refresh)
 let initialSession = null;
@@ -791,6 +1021,13 @@ const activeBranchId = ref(initialSession?.default_branch?.id || initialSession?
 const selectedPatient = ref(initialPatient);
 const showPersonaModal = ref(false);
 const switchingPersona = ref(null);
+const showSyncDrawer = ref(false);
+
+function formatMutationTime(timestamp) {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
 
 // Configure early axios headers if token exists in session
 if (initialSession?.token && window.axios) {
