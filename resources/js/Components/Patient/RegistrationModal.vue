@@ -146,12 +146,25 @@
                   Estimated
                 </label>
               </div>
-              <input
-                v-model="form.date_of_birth"
-                type="date"
-                :required="form.registration_type !== 'emergency'"
-                class="w-full text-sm rounded-lg border border-slate-300 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div class="flex gap-2">
+                <input
+                  v-model="form.date_of_birth"
+                  type="date"
+                  :required="form.registration_type !== 'emergency'"
+                  class="w-full text-sm rounded-lg border border-slate-300 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  v-if="form.is_dob_estimated"
+                  v-model.number="estimatedAge"
+                  @input="handleEstimatedAgeInput"
+                  type="number"
+                  min="0"
+                  max="125"
+                  placeholder="Age"
+                  class="w-20 text-sm rounded-lg border border-blue-300 py-2 px-2 bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-bold"
+                  title="Enter estimated age in years"
+                />
+              </div>
             </div>
 
             <div>
@@ -219,7 +232,7 @@
               <input
                 v-model="form.email"
                 type="email"
-                placeholder="patient@example.com"
+                placeholder="patient@hospital.org"
                 class="w-full text-sm rounded-lg border border-slate-300 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -347,12 +360,24 @@ const form = reactive({
   notes: '',
 });
 
+const estimatedAge = ref('');
+
+function handleEstimatedAgeInput() {
+  if (estimatedAge.value !== '' && !isNaN(estimatedAge.value)) {
+    const birthYear = new Date().getFullYear() - parseInt(estimatedAge.value, 10);
+    form.date_of_birth = `${birthYear}-01-01`;
+  }
+}
+
 function setRegistrationType(type) {
   form.registration_type = type;
   if (type === 'emergency') {
     form.triage_level = 'critical';
     if (!form.first_name) form.first_name = 'Trauma Unknown';
     form.is_dob_estimated = true;
+    if (!form.date_of_birth) {
+      form.date_of_birth = '1990-01-01';
+    }
   }
 }
 
@@ -360,8 +385,31 @@ async function submitForm() {
   isSubmitting.value = true;
   errorMessage.value = '';
 
+  // Clean empty strings to null/undefined before POST
+  const payload = { ...form };
+  payload.first_name = payload.first_name?.trim();
+  payload.last_name = payload.last_name?.trim() || (payload.registration_type === 'emergency' ? 'Unknown' : '');
+  payload.middle_name = payload.middle_name?.trim() || null;
+  payload.blood_group = payload.blood_group || null;
+  payload.national_id = payload.national_id?.trim() || null;
+  payload.phone = payload.phone?.trim() || null;
+  payload.email = payload.email?.trim() || null;
+  payload.referral_source = payload.referral_source?.trim() || null;
+  payload.notes = payload.notes?.trim() || null;
+  payload.date_of_birth = payload.date_of_birth || null;
+
+  // Clean emergency contact
+  if (!payload.emergency_contact?.name?.trim() && !payload.emergency_contact?.phone?.trim()) {
+    delete payload.emergency_contact;
+  }
+
+  // Clean address
+  if (!payload.address?.street?.trim() && !payload.address?.city?.trim()) {
+    delete payload.address;
+  }
+
   try {
-    const res = await axios.post('/api/v1/patients', form, {
+    const res = await axios.post('/api/v1/patients', payload, {
       headers: {
         'X-Branch-ID': props.branchId,
         'Accept': 'application/json',
@@ -371,11 +419,15 @@ async function submitForm() {
     emit('patientCreated', res.data.data);
     emit('close');
   } catch (err) {
-    if (err.response?.data?.message) {
+    if (err.response?.data?.errors) {
+      const fieldErrors = Object.values(err.response.data.errors).flat();
+      errorMessage.value = fieldErrors.join(' ');
+    } else if (err.response?.data?.message) {
       errorMessage.value = err.response.data.message;
     } else {
       errorMessage.value = 'Failed to register patient. Please check required fields.';
     }
+    console.error('[Registration] 422 / Validation Error Details:', err.response?.data || err);
   } finally {
     isSubmitting.value = false;
   }

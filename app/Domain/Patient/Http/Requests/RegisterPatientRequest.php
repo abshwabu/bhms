@@ -20,31 +20,91 @@ class RegisterPatientRequest extends FormRequest
         $sanitized = [];
 
         if ($this->has('first_name')) {
-            $sanitized['first_name'] = strip_tags(trim($this->input('first_name')));
+            $sanitized['first_name'] = strip_tags(trim((string) $this->input('first_name')));
         }
         if ($this->has('last_name')) {
-            $sanitized['last_name'] = strip_tags(trim($this->input('last_name')));
+            $last = strip_tags(trim((string) $this->input('last_name')));
+            $sanitized['last_name'] = $last === '' ? null : $last;
         }
         if ($this->has('middle_name')) {
-            $sanitized['middle_name'] = strip_tags(trim($this->input('middle_name')));
+            $middle = strip_tags(trim((string) $this->input('middle_name')));
+            $sanitized['middle_name'] = $middle === '' ? null : $middle;
         }
         if ($this->has('email')) {
-            $sanitized['email'] = strtolower(trim($this->input('email')));
+            $email = strtolower(trim((string) $this->input('email')));
+            $sanitized['email'] = $email === '' ? null : $email;
         }
         if ($this->has('phone')) {
             // Normalize phone: keep digits and optional leading +
-            $phone = preg_replace('/[^\d+]/', '', trim($this->input('phone')));
+            $phone = preg_replace('/[^\d+]/', '', trim((string) $this->input('phone')));
             $sanitized['phone'] = $phone ?: null;
         }
+        if ($this->has('alternate_phone')) {
+            $altPhone = preg_replace('/[^\d+]/', '', trim((string) $this->input('alternate_phone')));
+            $sanitized['alternate_phone'] = $altPhone ?: null;
+        }
         if ($this->has('national_id')) {
-            $sanitized['national_id'] = strtoupper(trim(strip_tags($this->input('national_id'))));
+            $nid = strtoupper(trim(strip_tags((string) $this->input('national_id'))));
+            $sanitized['national_id'] = $nid === '' ? null : $nid;
+        }
+        if ($this->has('passport_number')) {
+            $passport = strtoupper(trim(strip_tags((string) $this->input('passport_number'))));
+            $sanitized['passport_number'] = $passport === '' ? null : $passport;
+        }
+        if ($this->has('blood_group')) {
+            $bg = trim((string) $this->input('blood_group'));
+            $sanitized['blood_group'] = $bg === '' ? null : $bg;
+        }
+        if ($this->has('referral_source')) {
+            $ref = strip_tags(trim((string) $this->input('referral_source')));
+            $sanitized['referral_source'] = $ref === '' ? null : $ref;
+        }
+        if ($this->has('triage_level')) {
+            $tl = trim((string) $this->input('triage_level'));
+            $sanitized['triage_level'] = $tl === '' ? null : $tl;
+        }
+        if ($this->has('marital_status')) {
+            $ms = trim((string) $this->input('marital_status'));
+            $sanitized['marital_status'] = $ms === '' ? null : $ms;
+        }
+        if ($this->has('occupation')) {
+            $occ = strip_tags(trim((string) $this->input('occupation')));
+            $sanitized['occupation'] = $occ === '' ? null : $occ;
+        }
+        if ($this->has('preferred_language')) {
+            $pl = strip_tags(trim((string) $this->input('preferred_language')));
+            $sanitized['preferred_language'] = $pl === '' ? null : $pl;
+        }
+        if ($this->has('notes')) {
+            $notes = strip_tags(trim((string) $this->input('notes')));
+            $sanitized['notes'] = $notes === '' ? null : $notes;
+        }
+        if ($this->has('date_of_birth')) {
+            $dob = trim((string) $this->input('date_of_birth'));
+            $sanitized['date_of_birth'] = $dob === '' ? null : $dob;
         }
         if ($this->has('registration_type')) {
-            $sanitized['registration_type'] = strtolower(trim($this->input('registration_type')));
+            $sanitized['registration_type'] = strtolower(trim((string) $this->input('registration_type')));
+        }
+
+        // Clean empty address object
+        if ($this->has('address') && is_array($this->input('address'))) {
+            $addr = array_filter($this->input('address'), fn ($val) => is_string($val) && trim($val) !== '');
+            if (empty($addr) || (count($addr) === 1 && isset($addr['country']))) {
+                $sanitized['address'] = null;
+            }
+        }
+
+        // Clean empty emergency_contact object
+        if ($this->has('emergency_contact') && is_array($this->input('emergency_contact'))) {
+            $ec = array_filter($this->input('emergency_contact'), fn ($val) => is_string($val) && trim($val) !== '');
+            if (empty($ec)) {
+                $sanitized['emergency_contact'] = null;
+            }
         }
 
         // For emergency registration if last_name is missing, default to Unknown
-        if (($this->input('registration_type') === 'emergency') && empty($this->input('last_name'))) {
+        if (($this->input('registration_type') === 'emergency') && empty($sanitized['last_name'])) {
             $sanitized['last_name'] = 'Unknown';
         }
 
@@ -82,7 +142,7 @@ class RegisterPatientRequest extends FormRequest
             'passport_number' => ['nullable', 'string', 'max:100'],
             'phone' => ['nullable', 'string', 'max:50'],
             'alternate_phone' => ['nullable', 'string', 'max:50'],
-            'email' => ['nullable', app()->environment('testing') ? 'email:rfc' : 'email:rfc,dns', 'max:255'],
+            'email' => ['nullable', 'email:rfc', 'max:255'],
             'marital_status' => ['nullable', Rule::in(['single', 'married', 'divorced', 'widowed', 'other'])],
             'occupation' => ['nullable', 'string', 'max:100'],
             'preferred_language' => ['nullable', 'string', 'max:50'],
