@@ -765,13 +765,136 @@ import AdministrationMasterView from '../Administration/AdministrationMasterView
 import TelegramManagementView from '../Telegram/TelegramManagementView.vue';
 import SuperAdminMasterView from '../SuperAdmin/SuperAdminMasterView.vue';
 
+// Synchronous Session & State Rehydration (prevents flash & preserves active module on refresh)
+let initialSession = null;
+try {
+  const raw = localStorage.getItem('hms_portal_session');
+  if (raw) {
+    initialSession = JSON.parse(raw);
+  }
+} catch {}
+
+let initialPatient = null;
+try {
+  const rawPatient = localStorage.getItem('hms_selected_patient');
+  if (rawPatient) {
+    initialPatient = JSON.parse(rawPatient);
+  }
+} catch {}
+
 // Authentication & Tenant Context State
-const currentUser = ref(null);
-const currentOrganization = ref(null);
-const currentBranch = ref(null);
-const accessibleBranches = ref([]);
+const currentUser = ref(initialSession?.user || null);
+const currentOrganization = ref(initialSession?.organization || null);
+const currentBranch = ref(initialSession?.default_branch || null);
+const accessibleBranches = ref(initialSession?.accessible_branches || []);
+const activeBranchId = ref(initialSession?.default_branch?.id || initialSession?.accessible_branches?.[0]?.id || 'b9ff561a-5396-4309-9b08-3e7b358310e9');
+const selectedPatient = ref(initialPatient);
 const showPersonaModal = ref(false);
 const switchingPersona = ref(null);
+
+// Configure early axios headers if token exists in session
+if (initialSession?.token && window.axios) {
+  window.axios.defaults.headers.common['Authorization'] = `Bearer ${initialSession.token}`;
+  if (activeBranchId.value) {
+    window.axios.defaults.headers.common['X-Branch-ID'] = activeBranchId.value;
+  }
+}
+
+// View Metadata & Breadcrumbs Dictionary
+const viewLabels = {
+  search: { category: 'Patient Care', title: 'Patient Registry & Search' },
+  profile: { category: 'Patient Care', title: 'Patient Medical Profile' },
+  emergency: { category: 'Emergency Care', title: 'ER Triage & CAD Ambulance Dispatch' },
+  doctor_dashboard: { category: 'Clinical Medicine', title: 'Doctor Clinical Dashboard' },
+  ehr: { category: 'Clinical Medicine', title: 'Comprehensive EHR Timeline' },
+  soap: { category: 'Clinical Medicine', title: 'SOAP Consultation Notes' },
+  prescriptions: { category: 'Clinical Medicine', title: 'E-Prescriptions & Decision Support' },
+  booking: { category: 'Outpatient & OPD', title: 'Doctor Booking Calendar' },
+  queue: { category: 'Outpatient & OPD', title: 'OPD Queue Tokens & TV Display' },
+  referrals: { category: 'Outpatient & OPD', title: 'Clinical Referral Transfers' },
+  bed_map: { category: 'Inpatient & IPD', title: 'Visual Bed Map & Ward Allocation' },
+  nursing: { category: 'Inpatient & IPD', title: 'Nursing Station (Vitals & MAR)' },
+  discharge: { category: 'Inpatient & IPD', title: 'Discharge Summary Generator' },
+  ipd_analytics: { category: 'Inpatient & IPD', title: 'Occupancy & ALOS Analytics' },
+  laboratory: { category: 'Diagnostics', title: 'Diagnostic Laboratory Worklist' },
+  radiology: { category: 'Diagnostics', title: 'Radiology PACS / RIS Imaging' },
+  pharmacy: { category: 'Pharmacy', title: 'Pharmacy Master (FEFO Dispensing)' },
+  billing: { category: 'Finance', title: 'Billing, Invoicing & Insurance Claims' },
+  inventory: { category: 'Materials', title: 'Supplies & Biomedical Equipment' },
+  hr: { category: 'Human Resources', title: 'Staff Directory, Shifts & Rostering' },
+  reports: { category: 'Executive BI', title: 'Hospital Intelligence & Analytics' },
+  telegram: { category: 'Alerts', title: 'Telegram Real-Time Notification Engine' },
+  compliance: { category: 'Governance', title: 'HIPAA Compliance & Security Audits' },
+  admin: { category: 'Administration', title: 'System Administration & Master Data' },
+  super_admin: { category: 'Vendor Control', title: 'Super Admin Multi-Tenant Platform' },
+  portal: { category: 'Digital Portals', title: 'Patient Portal Experience Preview' },
+};
+
+// Default Workspace Dashboard per Role
+function getDefaultViewForRole(user) {
+  if (!user) return 'search';
+  const roles = (user.roles || []).map(r => (typeof r === 'string' ? r : r?.name || ''));
+  if (user.primary_role && !roles.includes(user.primary_role)) {
+    roles.push(user.primary_role);
+  }
+  if (user.is_super_admin || roles.includes('super_admin')) return 'super_admin';
+  if (roles.includes('hospital_admin') || roles.includes('admin')) return 'reports';
+  if (roles.includes('doctor')) return 'doctor_dashboard';
+  if (roles.includes('nurse')) return 'nursing';
+  if (roles.includes('pharmacist')) return 'pharmacy';
+  if (roles.includes('billing_officer')) return 'billing';
+  if (roles.includes('receptionist')) return 'booking';
+  return 'search';
+}
+
+function getInitialView() {
+  // 1. Check URL Hash (e.g. #billing, #pharmacy, #nursing)
+  const hash = window.location.hash.replace(/^#\/?/, '').trim();
+  if (hash && viewLabels[hash]) {
+    if ((hash === 'ehr' || hash === 'profile' || hash === 'prescriptions') && !initialPatient) {
+      return 'search';
+    }
+    return hash;
+  }
+
+  // 2. Check localStorage saved view
+  const saved = localStorage.getItem('hms_current_view');
+  if (saved && viewLabels[saved]) {
+    if ((saved === 'ehr' || saved === 'profile' || saved === 'prescriptions') && !initialPatient) {
+      return 'search';
+    }
+    return saved;
+  }
+
+  // 3. Saved user role default
+  if (currentUser.value) {
+    return getDefaultViewForRole(currentUser.value);
+  }
+
+  return 'doctor_dashboard';
+}
+
+const currentView = ref(getInitialView());
+
+// Keep active view & URL hash synced across navigation and page refreshes
+watch(currentView, (newView) => {
+  if (newView) {
+    localStorage.setItem('hms_current_view', newView);
+    const targetHash = `#${newView}`;
+    if (window.location.hash !== targetHash) {
+      window.history.replaceState(null, '', targetHash);
+    }
+  }
+}, { immediate: true });
+
+// Keep selected patient persisted in case of refresh during EHR or Prescriptions
+watch(selectedPatient, (newPatient) => {
+  if (newPatient) {
+    localStorage.setItem('hms_selected_patient', JSON.stringify(newPatient));
+  } else {
+    localStorage.removeItem('hms_selected_patient');
+  }
+}, { deep: true });
 
 // Responsive Sidebar & Navigation State
 const isSidebarCollapsed = ref(localStorage.getItem('hms_sidebar_collapsed') === 'true');
@@ -804,9 +927,6 @@ function matchesNav(label, category = '') {
   return label.toLowerCase().includes(q) || category.toLowerCase().includes(q);
 }
 
-const activeBranchId = ref('b9ff561a-5396-4309-9b08-3e7b358310e9');
-const currentView = ref('doctor_dashboard');
-const selectedPatient = ref(null);
 const isRegistrationModalOpen = ref(false);
 const isOrderModalOpen = ref(false);
 const orderModalType = ref('lab');
@@ -888,36 +1008,7 @@ const isBilling = computed(() => isHospitalAdmin.value || userRoles.value.includ
 const isReceptionist = computed(() => isHospitalAdmin.value || userRoles.value.includes('receptionist'));
 const isLab = computed(() => isHospitalAdmin.value || userRoles.value.includes('lab_technician') || userRoles.value.includes('radiologist'));
 
-// View Metadata & Breadcrumbs Dictionary
-const viewLabels = {
-  search: { category: 'Patient Care', title: 'Patient Registry & Search' },
-  profile: { category: 'Patient Care', title: 'Patient Medical Profile' },
-  emergency: { category: 'Emergency Care', title: 'ER Triage & CAD Ambulance Dispatch' },
-  doctor_dashboard: { category: 'Clinical Medicine', title: 'Doctor Clinical Dashboard' },
-  ehr: { category: 'Clinical Medicine', title: 'Comprehensive EHR Timeline' },
-  soap: { category: 'Clinical Medicine', title: 'SOAP Consultation Notes' },
-  prescriptions: { category: 'Clinical Medicine', title: 'E-Prescriptions & Decision Support' },
-  booking: { category: 'Outpatient & OPD', title: 'Doctor Booking Calendar' },
-  queue: { category: 'Outpatient & OPD', title: 'OPD Queue Tokens & TV Display' },
-  referrals: { category: 'Outpatient & OPD', title: 'Clinical Referral Transfers' },
-  bed_map: { category: 'Inpatient & IPD', title: 'Visual Bed Map & Ward Allocation' },
-  nursing: { category: 'Inpatient & IPD', title: 'Nursing Station (Vitals & MAR)' },
-  discharge: { category: 'Inpatient & IPD', title: 'Discharge Summary Generator' },
-  ipd_analytics: { category: 'Inpatient & IPD', title: 'Occupancy & ALOS Analytics' },
-  laboratory: { category: 'Diagnostics', title: 'Diagnostic Laboratory Worklist' },
-  radiology: { category: 'Diagnostics', title: 'Radiology PACS / RIS Imaging' },
-  pharmacy: { category: 'Pharmacy', title: 'Pharmacy Master (FEFO Dispensing)' },
-  billing: { category: 'Finance', title: 'Billing, Invoicing & Insurance Claims' },
-  inventory: { category: 'Materials', title: 'Supplies & Biomedical Equipment' },
-  hr: { category: 'Human Resources', title: 'Staff Directory, Shifts & Rostering' },
-  reports: { category: 'Executive BI', title: 'Hospital Intelligence & Analytics' },
-  telegram: { category: 'Alerts', title: 'Telegram Real-Time Notification Engine' },
-  compliance: { category: 'Governance', title: 'HIPAA Compliance & Security Audits' },
-  admin: { category: 'Administration', title: 'System Administration & Master Data' },
-  super_admin: { category: 'Vendor Control', title: 'Super Admin Multi-Tenant Platform' },
-  portal: { category: 'Digital Portals', title: 'Patient Portal Experience Preview' },
-};
-
+// Breadcrumbs & View Metadata
 const currentViewMeta = computed(() => {
   return viewLabels[currentView.value] || {
     category: 'Hospital Management',
@@ -943,20 +1034,6 @@ const userInitials = computed(() => {
   if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 });
-
-// Default Workspace Dashboard per Role
-function getDefaultViewForRole(user) {
-  if (!user) return 'search';
-  const roles = (user.roles || []).map(r => (typeof r === 'string' ? r : r?.name || ''));
-  if (user.is_super_admin || roles.includes('super_admin')) return 'super_admin';
-  if (roles.includes('hospital_admin') || roles.includes('admin')) return 'reports';
-  if (roles.includes('doctor')) return 'doctor_dashboard';
-  if (roles.includes('nurse')) return 'nursing';
-  if (roles.includes('pharmacist')) return 'pharmacy';
-  if (roles.includes('billing_officer')) return 'billing';
-  if (roles.includes('receptionist')) return 'booking';
-  return 'search';
-}
 
 // Check Module Authorization strictly by Role Whitelist
 function canAccessView(view) {
@@ -1377,6 +1454,11 @@ function handleLoginSuccess(payload) {
   }
 
   currentView.value = getDefaultViewForRole(currentUser.value);
+  localStorage.setItem('hms_current_view', currentView.value);
+  const targetHash = `#${currentView.value}`;
+  if (window.location.hash !== targetHash) {
+    window.history.replaceState(null, '', targetHash);
+  }
 
   if (window.location.pathname === '/login') {
     window.history.pushState({}, '', '/app');
@@ -1400,6 +1482,8 @@ async function handleSignOut() {
     console.warn('Sign out request failed:', err);
   } finally {
     localStorage.removeItem('hms_portal_session');
+    localStorage.removeItem('hms_current_view');
+    localStorage.removeItem('hms_selected_patient');
     sessionStorage.removeItem('hms_auth_token');
     if (window.axios) {
       delete window.axios.defaults.headers.common['Authorization'];
@@ -1409,6 +1493,8 @@ async function handleSignOut() {
     currentOrganization.value = null;
     currentBranch.value = null;
     accessibleBranches.value = [];
+    selectedPatient.value = null;
+    window.location.hash = '';
     if (window.location.pathname !== '/login') {
       window.history.pushState({}, '', '/login');
     }
@@ -1545,6 +1631,14 @@ onMounted(async () => {
   } catch (err) {
     console.error('Failed to load demo accounts:', err);
   }
+
+  // Sync view when browser Back/Forward navigation changes URL hash
+  window.addEventListener('hashchange', () => {
+    const hash = window.location.hash.replace(/^#\/?/, '').trim();
+    if (hash && viewLabels[hash] && canAccessView(hash) && currentView.value !== hash) {
+      currentView.value = hash;
+    }
+  });
 
   // Ensure currentView is allowed for active role
   if (currentUser.value && !canAccessView(currentView.value)) {
