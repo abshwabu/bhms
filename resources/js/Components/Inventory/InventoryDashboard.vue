@@ -636,6 +636,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import { showAlert } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: {
@@ -773,7 +774,7 @@ async function submitCreateItem() {
     showNewItemModal.value = false;
     await Promise.all([fetchItems(), fetchSummary(), fetchAlerts()]);
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to create inventory item.');
+    await showAlert(err.response?.data?.message || 'Failed to create inventory item.');
   } finally {
     isSubmitting.value = false;
   }
@@ -801,7 +802,7 @@ async function submitConsumption() {
     showConsumeModal.value = false;
     await Promise.all([fetchItems(), fetchSummary(), fetchAlerts()]);
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to log consumption.');
+    await showAlert(err.response?.data?.message || 'Failed to log consumption.');
   } finally {
     isSubmitting.value = false;
   }
@@ -829,7 +830,7 @@ async function submitAdjustment() {
     showAdjustModal.value = false;
     await Promise.all([fetchItems(), fetchSummary(), fetchAlerts()]);
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to adjust stock.');
+    await showAlert(err.response?.data?.message || 'Failed to adjust stock.');
   } finally {
     isSubmitting.value = false;
   }

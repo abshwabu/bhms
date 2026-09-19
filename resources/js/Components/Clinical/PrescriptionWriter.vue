@@ -348,6 +348,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { showAlert } from '../../Services/modalDialog';
 
 const props = defineProps({
   patient: { type: Object, required: true },
@@ -494,7 +495,7 @@ async function executePrescriptionCreation(targetStatus, overrideJustification =
     if (err.response?.data?.code === 'SAFETY_WARNINGS_DETECTED') {
       isOverrideModalOpen.value = true;
     } else {
-      alert(err.response?.data?.message || 'Failed to save prescription.');
+      await showAlert(err.response?.data?.message || 'Failed to save prescription.', { status: 'error' });
     }
   } finally {
     isSubmitting.value = false;

@@ -346,6 +346,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { showAlert } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: {
@@ -479,7 +480,7 @@ const submitLeave = async () => {
       await fetchBalances();
       await fetchLeaveRequests();
     } else {
-      alert(json.message || 'Error submitting leave request');
+      await showAlert(json.message || 'Error submitting leave request', { status: 'error' });
     }
   } catch (err) {
     console.error('Failed to submit leave', err);
@@ -503,7 +504,7 @@ const approveRequest = async (req) => {
       await fetchBalances();
       await fetchLeaveRequests();
     } else {
-      alert(json.message || 'Error approving leave');
+      await showAlert(json.message || 'Error approving leave', { status: 'error' });
     }
   } catch (err) {
     console.error('Failed to approve leave', err);
@@ -537,7 +538,7 @@ const confirmReject = async () => {
       await fetchBalances();
       await fetchLeaveRequests();
     } else {
-      alert(json.message || 'Error rejecting leave');
+      await showAlert(json.message || 'Error rejecting leave', { status: 'error' });
     }
   } catch (err) {
     console.error('Failed to reject leave', err);

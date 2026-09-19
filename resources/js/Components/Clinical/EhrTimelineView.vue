@@ -514,6 +514,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { showAlert } from '../../Services/modalDialog';
 
 const props = defineProps({
   patient: { type: Object, required: true },
@@ -680,7 +681,7 @@ async function submitNewNote() {
     newNoteForm.value.clinical_notes = { chief_complaint: '', subjective: '', objective: '', assessment: '', plan: '' };
     fetchTimeline();
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to save clinical note.');
+    await showAlert(err.response?.data?.message || 'Failed to save clinical note.', { status: 'error' });
   } finally {
     isSubmitting.value = false;
   }
@@ -712,7 +713,7 @@ async function submitAmendment() {
     isAmendModalOpen.value = false;
     fetchTimeline();
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to amend record.');
+    await showAlert(err.response?.data?.message || 'Failed to amend record.', { status: 'error' });
   } finally {
     isSubmitting.value = false;
   }
@@ -728,7 +729,7 @@ async function finalizeEhrRecord(event) {
     });
     fetchTimeline();
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to finalize EHR record.');
+    await showAlert(err.response?.data?.message || 'Failed to finalize EHR record.', { status: 'error' });
   }
 }
 

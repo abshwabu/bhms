@@ -144,6 +144,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { showAlert } from '../../Services/modalDialog';
 
 const scorecard = ref({});
 const creatingBackup = ref(false);
@@ -189,7 +190,10 @@ async function verifyChecksum(id) {
       }
     });
     const json = await res.json();
-    alert(`Checksum Validation: ${json.data.is_valid ? 'VALID (MATCH)' : 'FAILED'}\nSHA-256: ${json.data.stored_checksum}`);
+    await showAlert(`Checksum Validation: ${json.data.is_valid ? 'VALID (MATCH)' : 'FAILED'}\nSHA-256: ${json.data.stored_checksum}`, {
+      title: 'Checksum Validation Result',
+      status: json.data.is_valid ? 'success' : 'error',
+    });
     await loadBackups();
   } catch (err) {
     console.error('Checksum verification failed:', err);
@@ -206,7 +210,10 @@ async function runRestoreDrill(id) {
       }
     });
     const json = await res.json();
-    alert(`Restore Verification Drill Passed!\nVerified Tables: ${json.data.verified_tables_count}\nDuration: ${json.data.drill_duration_ms} ms`);
+    await showAlert(`Restore Verification Drill Passed!\nVerified Tables: ${json.data.verified_tables_count}\nDuration: ${json.data.drill_duration_ms} ms`, {
+      title: 'Drill Verification',
+      status: 'success',
+    });
     await loadBackups();
   } catch (err) {
     console.error('Restore drill failed:', err);

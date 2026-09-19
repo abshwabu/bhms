@@ -214,6 +214,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { showAlert, showConfirm } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: {
@@ -270,7 +271,7 @@ async function fetchAlerts() {
 }
 
 async function quarantineBatch(lot) {
-  if (!confirm(`Are you sure you want to quarantine batch '${lot.batch_number}'? It will immediately be excluded from all prescription dispensing.`)) {
+  if (!await showConfirm(`Are you sure you want to quarantine batch '${lot.batch_number}'? It will immediately be excluded from all prescription dispensing.`)) {
     return;
   }
 
@@ -291,13 +292,13 @@ async function quarantineBatch(lot) {
 
     const json = await res.json();
     if (json.success) {
-      alert(`Batch '${lot.batch_number}' has been quarantined.`);
+      await showAlert(`Batch '${lot.batch_number}' has been quarantined.`);
       await fetchAlerts();
     } else {
-      alert(json.message || 'Quarantine failed.');
+      await showAlert(json.message || 'Quarantine failed.');
     }
   } catch (e) {
-    alert('Failed to quarantine batch.');
+    await showAlert('Failed to quarantine batch.');
   }
 }
 
@@ -333,14 +334,14 @@ async function submitWriteOff() {
 
     const json = await res.json();
     if (json.success) {
-      alert(`Wasted units written off successfully.`);
+      await showAlert(`Wasted units written off successfully.`);
       isWriteOffModalOpen.value = false;
       await fetchAlerts();
     } else {
-      alert(json.message || 'Write off failed.');
+      await showAlert(json.message || 'Write off failed.');
     }
   } catch (e) {
-    alert('Failed to process write-off.');
+    await showAlert('Failed to process write-off.');
   }
 }
 </script>

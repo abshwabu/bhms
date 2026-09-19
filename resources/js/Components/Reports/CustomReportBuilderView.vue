@@ -375,6 +375,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { showAlert } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: {
@@ -579,7 +580,7 @@ async function saveTemplate() {
     });
     const json = await res.json();
     if (json.success) {
-      alert(`Report template '${templateName.value}' saved successfully.`);
+      await showAlert(`Report template '${templateName.value}' saved successfully.`);
       isSaveModalOpen.value = false;
     }
   } catch (err) {

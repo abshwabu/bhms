@@ -547,6 +547,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { showAlert } from '../../Services/modalDialog';
 import InvoiceReceiptView from './InvoiceReceiptView.vue';
 
 const props = defineProps({
@@ -708,10 +709,10 @@ async function submitInvoice() {
       isInvoiceModalOpen.value = false;
       await fetchInvoices();
     } else {
-      alert(json.message || 'Failed to create invoice.');
+      await showAlert(json.message || 'Failed to create invoice.', { status: 'error' });
     }
   } catch (e) {
-    alert('Error creating invoice.');
+    await showAlert('Error creating invoice.', { status: 'error' });
   } finally {
     submittingInvoice.value = false;
   }
@@ -750,14 +751,14 @@ async function submitPayment() {
 
     const json = await res.json();
     if (json.success) {
-      alert(`Payment of $${paymentForm.value.amount.toFixed(2)} recorded under Receipt #${json.data.receipt_number}`);
+      await showAlert(`Payment of $${paymentForm.value.amount.toFixed(2)} recorded under Receipt #${json.data.receipt_number}`, { status: 'success' });
       isPaymentModalOpen.value = false;
       await fetchInvoices();
     } else {
-      alert(json.message || 'Payment recording failed.');
+      await showAlert(json.message || 'Payment recording failed.', { status: 'error' });
     }
   } catch (e) {
-    alert('Error processing payment.');
+    await showAlert('Error processing payment.', { status: 'error' });
   } finally {
     submittingPayment.value = false;
   }
@@ -801,11 +802,11 @@ async function submitDiscount() {
     });
 
     const json = await res.json();
-    alert(json.message || 'Discount processed.');
+    await showAlert(json.message || 'Discount processed.', { status: json.success ? 'success' : 'error' });
     isDiscountModalOpen.value = false;
     await fetchInvoices();
   } catch (e) {
-    alert('Failed to request discount.');
+    await showAlert('Failed to request discount.', { status: 'error' });
   }
 }
 
@@ -840,11 +841,11 @@ async function submitRefund() {
     });
 
     const json = await res.json();
-    alert(json.message || 'Refund submitted.');
+    await showAlert(json.message || 'Refund submitted.', { status: json.success ? 'success' : 'error' });
     isRefundModalOpen.value = false;
     await fetchInvoices();
   } catch (e) {
-    alert('Failed to process refund.');
+    await showAlert('Failed to process refund.', { status: 'error' });
   }
 }
 </script>

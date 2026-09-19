@@ -314,6 +314,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
+import { showAlert } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: { type: String, required: true },
@@ -394,7 +395,7 @@ async function finalizeChart(chart) {
     });
     fetchDashboard();
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to finalize chart.');
+    await showAlert(err.response?.data?.message || 'Failed to finalize chart.', { status: 'error' });
   }
 }
 
@@ -409,7 +410,7 @@ async function signOffDiagnostic(diag) {
     });
     fetchDashboard();
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to sign off diagnostic report.');
+    await showAlert(err.response?.data?.message || 'Failed to sign off diagnostic report.', { status: 'error' });
   }
 }
 

@@ -190,6 +190,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 import axios from 'axios';
+import { showAlert } from '../../Services/modalDialog';
 
 const props = defineProps({
   isOpen: { type: Boolean, default: false },
@@ -240,7 +241,7 @@ async function submitLabOrder() {
     emit('orderCreated', { type: 'lab', data: res.data.data });
     emit('close');
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to submit lab order.');
+    await showAlert(err.response?.data?.message || 'Failed to submit lab order.', { status: 'error' });
   } finally {
     isSubmitting.value = false;
   }
@@ -261,7 +262,7 @@ async function submitRadiologyOrder() {
     emit('orderCreated', { type: 'radiology', data: res.data.data });
     emit('close');
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to submit radiology order.');
+    await showAlert(err.response?.data?.message || 'Failed to submit radiology order.', { status: 'error' });
   } finally {
     isSubmitting.value = false;
   }

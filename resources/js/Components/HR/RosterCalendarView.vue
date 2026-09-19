@@ -334,6 +334,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { showAlert, showConfirm } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: {
@@ -546,7 +547,7 @@ const submitShift = async () => {
       isNewShiftModalOpen.value = false;
       await fetchShifts();
     } else {
-      alert(json.message || 'Error creating shift');
+      await showAlert(json.message || 'Error creating shift', { status: 'error' });
     }
   } catch (err) {
     console.error('Failed to create shift', err);
@@ -556,7 +557,7 @@ const submitShift = async () => {
 };
 
 const cancelShift = async (shift) => {
-  if (!confirm(`Cancel shift '${shift.shift_name}' for ${shift.staff?.full_name}?`)) return;
+  if (!await showConfirm(`Cancel shift '${shift.shift_name}' for ${shift.staff?.full_name}?`, { isDestructive: true })) return;
   try {
     const res = await fetch(`/api/v1/hr/shifts/${shift.id}/cancel`, {
       method: 'POST',
@@ -591,7 +592,7 @@ const publishCurrentWeekRoster = async () => {
     });
     const json = await res.json();
     if (json.success) {
-      alert(json.message || 'Weekly roster published successfully!');
+      await showAlert(json.message || 'Weekly roster published successfully!', { status: 'success' });
       await fetchShifts();
     }
   } catch (err) {

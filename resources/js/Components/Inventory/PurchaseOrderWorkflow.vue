@@ -445,6 +445,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { showAlert, showConfirm, showPrompt } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: {
@@ -561,40 +562,40 @@ async function submitCreatePo() {
     showNewPoModal.value = false;
     await fetchPurchaseOrders();
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to create purchase order.');
+    await showAlert(err.response?.data?.message || 'Failed to create purchase order.');
   } finally {
     isSubmitting.value = false;
   }
 }
 
 async function submitPo(po) {
-  if (!confirm(`Submit PO #${po.po_number} for supervisor approval?`)) return;
+  if (!await showConfirm(`Submit PO #${po.po_number} for supervisor approval?`)) return;
   try {
     await axios.post(`/api/v1/inventory/purchase-orders/${po.id}/submit`);
     await fetchPurchaseOrders();
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to submit PO.');
+    await showAlert(err.response?.data?.message || 'Failed to submit PO.');
   }
 }
 
 async function approvePo(po) {
-  if (!confirm(`Authorize and approve PO #${po.po_number} for $${po.total.toFixed(2)}?`)) return;
+  if (!await showConfirm(`Authorize and approve PO #${po.po_number} for $${po.total.toFixed(2)}?`)) return;
   try {
     await axios.post(`/api/v1/inventory/purchase-orders/${po.id}/approve`);
     await fetchPurchaseOrders();
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to approve PO.');
+    await showAlert(err.response?.data?.message || 'Failed to approve PO.');
   }
 }
 
 async function openRejectPoModal(po) {
-  const reason = prompt(`Reason for rejecting PO #${po.po_number}:`);
+  const reason = await showPrompt(`Reason for rejecting PO #${po.po_number}:`);
   if (!reason) return;
   try {
     await axios.post(`/api/v1/inventory/purchase-orders/${po.id}/reject`, { reason });
     await fetchPurchaseOrders();
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to reject PO.');
+    await showAlert(err.response?.data?.message || 'Failed to reject PO.');
   }
 }
 
@@ -623,7 +624,7 @@ async function submitReceiveGoods() {
       }));
 
     if (itemsToReceive.length === 0) {
-      alert('Please specify at least 1 item quantity to receive.');
+      await showAlert('Please specify at least 1 item quantity to receive.');
       isSubmitting.value = false;
       return;
     }
@@ -634,7 +635,7 @@ async function submitReceiveGoods() {
     showReceiveModal.value = false;
     await fetchPurchaseOrders();
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to receive goods.');
+    await showAlert(err.response?.data?.message || 'Failed to receive goods.');
   } finally {
     isSubmitting.value = false;
   }

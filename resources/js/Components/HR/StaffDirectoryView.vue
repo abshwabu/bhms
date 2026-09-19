@@ -379,6 +379,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { showAlert } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: {
@@ -498,7 +499,7 @@ const submitCredential = async () => {
       await fetchStaff();
       await fetchAlerts();
     } else {
-      alert(json.message || 'Error recording credential');
+      await showAlert(json.message || 'Error recording credential', { status: 'error' });
     }
   } catch (err) {
     console.error('Failed to submit credential', err);

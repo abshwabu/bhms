@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { saveApiResponse, getApiResponse, addOutboxMutation } from './offline/offlineStorage';
+import './Services/modalDialog';
 
 window.axios = axios;
 

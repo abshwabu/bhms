@@ -314,6 +314,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { showAlert } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: { type: String, required: true },
@@ -396,7 +397,7 @@ async function submitVitals() {
     });
     if (res.ok) {
       showVitalsModal.value = false;
-      alert('Vitals recorded successfully.');
+      await showAlert('Vitals recorded successfully.');
     }
   } catch (e) {
     console.error('Submit vitals error', e);
@@ -432,7 +433,7 @@ async function submitMedication() {
     });
     if (res.ok) {
       showMedicationModal.value = false;
-      alert('Medication administration logged.');
+      await showAlert('Medication administration logged.');
     }
   } catch (e) {
     console.error('Submit medication error', e);

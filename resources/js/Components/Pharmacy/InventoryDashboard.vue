@@ -362,6 +362,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { showAlert } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: {
@@ -508,14 +509,14 @@ async function submitIntake() {
 
     const json = await res.json();
     if (json.success) {
-      alert(`Intake recorded for Lot #${json.data.batch_number}`);
+      await showAlert(`Intake recorded for Lot #${json.data.batch_number}`);
       isIntakeModalOpen.value = false;
       await loadData();
     } else {
-      alert(json.message || 'Intake failed.');
+      await showAlert(json.message || 'Intake failed.');
     }
   } catch (e) {
-    alert('Failed to submit intake.');
+    await showAlert('Failed to submit intake.');
   } finally {
     submittingIntake.value = false;
   }
@@ -554,10 +555,10 @@ async function submitThresholdEdit() {
       isEditThresholdModalOpen.value = false;
       await loadData();
     } else {
-      alert(json.message || 'Update failed.');
+      await showAlert(json.message || 'Update failed.');
     }
   } catch (e) {
-    alert('Failed to update drug settings.');
+    await showAlert('Failed to update drug settings.');
   }
 }
 </script>

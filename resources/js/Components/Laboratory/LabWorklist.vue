@@ -363,6 +363,7 @@ import { ref, computed, onMounted } from 'vue';
 import SampleLabelModal from './SampleLabelModal.vue';
 import ResultEntryForm from './ResultEntryForm.vue';
 import ReportPreviewModal from './ReportPreviewModal.vue';
+import { showAlert } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: { type: String, default: 'b9ff561a-5396-4309-9b08-3e7b358310e9' },
@@ -480,10 +481,10 @@ async function handleBarcodeScan() {
       openResultEntry(matched);
       barcodeScanQuery.value = '';
     } else {
-      alert(`Barcode ${code} not found in active laboratory orders.`);
+      await showAlert(`Barcode ${code} not found in active laboratory orders.`);
     }
   } catch (err) {
-    alert('Barcode scan error: ' + err.message);
+    await showAlert('Barcode scan error: ' + err.message);
   }
 }
 
@@ -565,7 +566,7 @@ function handleResultSaved() {
 async function simulateAnalyzerFeed() {
   const firstSample = samples.value[0];
   if (!firstSample) {
-    alert('No samples currently in worklist to simulate equipment feed against.');
+    await showAlert('No samples currently in worklist to simulate equipment feed against.');
     return;
   }
 
@@ -593,13 +594,13 @@ async function simulateAnalyzerFeed() {
 
     const json = await res.json();
     if (res.ok) {
-      alert(`Analyzer HL7 Feed processed successfully for sample ${firstSample.barcode}!`);
+      await showAlert(`Analyzer HL7 Feed processed successfully for sample ${firstSample.barcode}!`);
       fetchWorklist();
     } else {
-      alert(`HL7 ingestion error: ${json.message}`);
+      await showAlert(`HL7 ingestion error: ${json.message}`);
     }
   } catch (err) {
-    alert(`Analyzer integration simulation error: ${err.message}`);
+    await showAlert(`Analyzer integration simulation error: ${err.message}`);
   }
 }
 

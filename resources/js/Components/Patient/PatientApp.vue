@@ -951,10 +951,14 @@
     </div>
     </div>
   </div>
+
+  <!-- Global App Modal Dialog (Replaces native browser alert/confirm/prompt) -->
+  <GlobalModalDialog />
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
+import GlobalModalDialog from '../Common/GlobalModalDialog.vue';
 import SignInView from '../Auth/SignInView.vue';
 import PatientSearchScreen from './PatientSearchScreen.vue';
 import PatientProfileView from './PatientProfileView.vue';

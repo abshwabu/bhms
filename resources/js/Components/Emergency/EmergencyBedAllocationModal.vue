@@ -139,6 +139,7 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue';
+import { showAlert, showConfirm } from '../../Services/modalDialog';
 
 const props = defineProps({
   isOpen: {
@@ -235,7 +236,7 @@ const confirmAllocation = async () => {
       emit('bed-allocated', json.data);
       emit('close');
     } else {
-      alert(json.message || 'Error allocating bed');
+      await showAlert(json.message || 'Error allocating bed', { status: 'error' });
     }
   } catch (err) {
     console.error('Failed to allocate bed', err);
@@ -246,7 +247,7 @@ const confirmAllocation = async () => {
 
 const releaseCurrentBed = async () => {
   if (!props.emergencyCase) return;
-  if (!confirm(`Release bed for ${props.emergencyCase.display_patient_name}?`)) return;
+  if (!await showConfirm(`Release bed for ${props.emergencyCase.display_patient_name}?`, { isDestructive: true })) return;
   allocating.value = true;
   try {
     const res = await fetch(`/api/v1/emergency/cases/${props.emergencyCase.id}/release-bed`, {

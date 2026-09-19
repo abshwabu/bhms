@@ -308,6 +308,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
+import { showAlert, showConfirm } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: { type: String, required: true },
@@ -378,7 +379,7 @@ async function fetchPatientNotes() {
       loadNote(json.data[0]);
     } else {
       initNewNote();
-      alert('No previous consultation notes found for this patient. Ready for new entry.');
+      await showAlert('No previous consultation notes found for this patient. Ready for new entry.');
     }
   } catch (e) {
     console.error('Fetch notes error', e);
@@ -427,9 +428,9 @@ async function saveDraft() {
     const json = await res.json();
     if (res.ok) {
       currentNote.value = json.data;
-      alert(json.message || 'Draft saved.');
+      await showAlert(json.message || 'Draft saved.');
     } else {
-      alert(json.message || 'Error saving note.');
+      await showAlert(json.message || 'Error saving note.');
     }
   } catch (e) {
     console.error('Save draft error', e);
@@ -440,7 +441,7 @@ async function saveDraft() {
 
 async function signOffNote() {
   if (!currentNote.value || !currentNote.value.id) return;
-  if (!confirm('Once signed off, this clinical note is legally sealed and cannot be modified. Continue?')) return;
+  if (!await showConfirm('Once signed off, this clinical note is legally sealed and cannot be modified. Continue?')) return;
   signing.value = true;
   try {
     const res = await fetch(`/api/v1/opd/soap-notes/${currentNote.value.id}/sign-off`, {
@@ -453,7 +454,7 @@ async function signOffNote() {
     const json = await res.json();
     if (res.ok) {
       currentNote.value = json.data;
-      alert('Consultation note successfully signed off and sealed!');
+      await showAlert('Consultation note successfully signed off and sealed!');
     }
   } catch (e) {
     console.error('Sign off error', e);
@@ -482,9 +483,9 @@ async function submitAmendment() {
     if (res.ok) {
       showAmendModal.value = false;
       loadNote(json.data);
-      alert(`Note amended successfully! Version ${json.data.version} created.`);
+      await showAlert(`Note amended successfully! Version ${json.data.version} created.`);
     } else {
-      alert(json.message || 'Error amending note');
+      await showAlert(json.message || 'Error amending note');
     }
   } catch (e) {
     console.error('Amendment error', e);

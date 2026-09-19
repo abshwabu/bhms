@@ -439,6 +439,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import { showAlert, showConfirm } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: {
@@ -528,7 +529,7 @@ async function submitClaim() {
     showNewClaimModal.value = false;
     await fetchClaims();
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to submit claim.');
+    await showAlert(err.response?.data?.message || 'Failed to submit claim.', { status: 'error' });
   } finally {
     isSubmitting.value = false;
   }
@@ -563,21 +564,21 @@ async function submitAdjudication() {
     showAdjudicateModal.value = false;
     await fetchClaims();
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to adjudicate claim.');
+    await showAlert(err.response?.data?.message || 'Failed to adjudicate claim.', { status: 'error' });
   } finally {
     isSubmitting.value = false;
   }
 }
 
 async function reconcileClaim(claim) {
-  if (!confirm(`Reconcile settlement for Claim #${claim.claim_number} ($${Number(claim.approved_amount).toFixed(2)})? This will credit the invoice.`)) {
+  if (!await showConfirm(`Reconcile settlement for Claim #${claim.claim_number} ($${Number(claim.approved_amount).toFixed(2)})? This will credit the invoice.`)) {
     return;
   }
   try {
     await axios.post(`/api/v1/billing/claims/${claim.id}/reconcile`);
     await fetchClaims();
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to reconcile claim payout.');
+    await showAlert(err.response?.data?.message || 'Failed to reconcile claim payout.', { status: 'error' });
   }
 }
 

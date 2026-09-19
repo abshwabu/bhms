@@ -191,6 +191,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { showAlert } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: { type: String, required: true },
@@ -255,9 +256,9 @@ async function submitReferral() {
     if (res.ok) {
       showCreateModal.value = false;
       await fetchReferrals();
-      alert('Referral created successfully.');
+      await showAlert('Referral created successfully.');
     } else {
-      alert(json.message || 'Error creating referral');
+      await showAlert(json.message || 'Error creating referral');
     }
   } catch (e) {
     console.error('Submit referral error', e);

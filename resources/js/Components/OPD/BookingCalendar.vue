@@ -277,6 +277,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { showAlert, showConfirm, showPrompt } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: { type: String, required: true },
@@ -393,7 +394,7 @@ async function submitBooking() {
 }
 
 async function checkInPatient(appt) {
-  if (!confirm(`Check in ${appt.patient ? appt.patient.full_name : 'patient'} and issue queue token?`)) return;
+  if (!await showConfirm(`Check in ${appt.patient ? appt.patient.full_name : 'patient'} and issue queue token?`)) return;
   try {
     const res = await fetch(`/api/v1/opd/appointments/${appt.id}/check-in`, {
       method: 'POST',
@@ -404,7 +405,7 @@ async function checkInPatient(appt) {
     });
     const json = await res.json();
     if (res.ok) {
-      alert(`Patient checked in! Queue Token: ${json.data.queue_token}`);
+      await showAlert(`Patient checked in! Queue Token: ${json.data.queue_token}`);
       await fetchAppointments();
     }
   } catch (e) {
@@ -413,7 +414,7 @@ async function checkInPatient(appt) {
 }
 
 async function openCancelModal(appt) {
-  const reason = prompt('Please enter cancellation reason:');
+  const reason = await showPrompt('Please enter cancellation reason:');
   if (!reason) return;
   try {
     const res = await fetch(`/api/v1/opd/appointments/${appt.id}/cancel`, {

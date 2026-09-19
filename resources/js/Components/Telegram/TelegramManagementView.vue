@@ -639,6 +639,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { showAlert, showConfirm } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: {
@@ -784,7 +785,7 @@ async function saveChannel() {
 }
 
 async function deleteChannel(id) {
-  if (!confirm('Are you sure you want to remove this Telegram channel?')) return;
+  if (!await showConfirm('Are you sure you want to remove this Telegram channel?')) return;
   try {
     const res = await fetch(`/api/v1/telegram/channels/${id}`, { method: 'DELETE' });
     if (res.ok) {
@@ -803,10 +804,10 @@ async function testPingChannel(channel) {
       headers: { Accept: 'application/json' },
     });
     const result = await res.json();
-    alert(result.message || 'Ping completed.');
+    await showAlert(result.message || 'Ping completed.');
     await fetchLogs();
   } catch (err) {
-    alert('Ping failed: ' + err.message);
+    await showAlert('Ping failed: ' + err.message);
   } finally {
     isPinging.value[channel.id] = false;
   }
@@ -821,10 +822,10 @@ async function triggerDailyDigest() {
       body: JSON.stringify({ branch_id: props.branchId }),
     });
     const data = await res.json();
-    alert(`Daily digest dispatched to ${data.dispatched_count} active channels.`);
+    await showAlert(`Daily digest dispatched to ${data.dispatched_count} active channels.`);
     await fetchLogs();
   } catch (err) {
-    alert('Daily digest dispatch failed: ' + err.message);
+    await showAlert('Daily digest dispatch failed: ' + err.message);
   } finally {
     isSubmitting.value = false;
   }
@@ -839,10 +840,10 @@ async function triggerShiftHandover() {
       body: JSON.stringify({ shift: handoverShift.value, branch_id: props.branchId }),
     });
     const data = await res.json();
-    alert(`Shift handover (${handoverShift.value}) dispatched to ${data.dispatched_count} clinical channels.`);
+    await showAlert(`Shift handover (${handoverShift.value}) dispatched to ${data.dispatched_count} clinical channels.`);
     await fetchLogs();
   } catch (err) {
-    alert('Shift handover dispatch failed: ' + err.message);
+    await showAlert('Shift handover dispatch failed: ' + err.message);
   } finally {
     isSubmitting.value = false;
   }
@@ -856,10 +857,10 @@ async function triggerCriticalAlert(alertType) {
       body: JSON.stringify({ alert_type: alertType, branch_id: props.branchId }),
     });
     const data = await res.json();
-    alert(`Critical alert [${alertType}] dispatched to ${data.dispatched_count} channels!`);
+    await showAlert(`Critical alert [${alertType}] dispatched to ${data.dispatched_count} channels!`);
     await fetchLogs();
   } catch (err) {
-    alert('Critical alert dispatch failed: ' + err.message);
+    await showAlert('Critical alert dispatch failed: ' + err.message);
   }
 }
 
@@ -887,7 +888,7 @@ async function runSimulatedCommand() {
     };
     await fetchLogs();
   } catch (err) {
-    alert('Simulation error: ' + err.message);
+    await showAlert('Simulation error: ' + err.message);
   } finally {
     isSimulating.value = false;
   }
@@ -897,10 +898,10 @@ async function retryIndividualMessage(id) {
   try {
     const res = await fetch(`/api/v1/telegram/logs/${id}/retry`, { method: 'POST' });
     const data = await res.json();
-    alert(data.message || 'Retry executed.');
+    await showAlert(data.message || 'Retry executed.');
     await fetchLogs();
   } catch (err) {
-    alert('Retry failed: ' + err.message);
+    await showAlert('Retry failed: ' + err.message);
   }
 }
 
@@ -909,7 +910,7 @@ async function triggerRetrySweep() {
   try {
     // Retry sweep via log reload
     await fetchLogs();
-    alert('Retry scan completed.');
+    await showAlert('Retry scan completed.');
   } finally {
     isRetryingSweep.value = false;
   }

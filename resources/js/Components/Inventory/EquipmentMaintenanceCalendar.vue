@@ -621,6 +621,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import { showAlert } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: {
@@ -755,7 +756,7 @@ async function submitRegisterEquipment() {
     showRegisterModal.value = false;
     await Promise.all([fetchEquipments(), fetchAlerts()]);
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to register equipment.');
+    await showAlert(err.response?.data?.message || 'Failed to register equipment.');
   } finally {
     isSubmitting.value = false;
   }
@@ -787,7 +788,7 @@ async function submitScheduleMaintenance() {
     showScheduleModal.value = false;
     await Promise.all([fetchEquipments(), fetchAlerts(), fetchMaintenanceLogs()]);
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to schedule maintenance.');
+    await showAlert(err.response?.data?.message || 'Failed to schedule maintenance.');
   } finally {
     isSubmitting.value = false;
   }
@@ -815,7 +816,7 @@ async function submitCompleteMaintenance() {
     showCompleteModal.value = false;
     await Promise.all([fetchEquipments(), fetchAlerts(), fetchMaintenanceLogs()]);
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to complete maintenance.');
+    await showAlert(err.response?.data?.message || 'Failed to complete maintenance.');
   } finally {
     isSubmitting.value = false;
   }

@@ -317,6 +317,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { showAlert } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: { type: String, required: true },
@@ -391,7 +392,7 @@ async function submitAdmission() {
     const json = await res.json();
     if (res.ok) {
       showAdmitModal.value = false;
-      alert(`Admission ${json.data.admission_number} created!`);
+      await showAlert(`Admission ${json.data.admission_number} created!`, { status: 'success' });
       await fetchBedMap();
     } else {
       admitError.value = json.message || 'Error creating admission.';
@@ -414,7 +415,7 @@ function openTransferModal(bed) {
 
 async function submitTransfer() {
   if (!activeTransferBed.value?.patient?.admission_number) {
-    alert('No active admission found on this bed.');
+    await showAlert('No active admission found on this bed.', { status: 'warning' });
     return;
   }
   transferring.value = true;

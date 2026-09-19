@@ -252,6 +252,7 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue';
+import { showConfirm } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: {
@@ -352,7 +353,7 @@ async function saveItem() {
 }
 
 async function deleteItem(resource, id) {
-  if (!confirm('Are you sure you want to delete this master data item?')) return;
+  if (!await showConfirm('Are you sure you want to delete this master data item?', { isDestructive: true })) return;
   try {
     const res = await fetch(`/api/v1/admin/${resource}/${id}`, {
       method: 'DELETE',

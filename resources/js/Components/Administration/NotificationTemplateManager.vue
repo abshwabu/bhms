@@ -249,6 +249,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { showConfirm } from '../../Services/modalDialog';
 
 const viewTab = ref('templates');
 const templates = ref([]);
@@ -321,7 +322,7 @@ async function saveTemplate() {
 }
 
 async function deleteTemplate(id) {
-  if (!confirm('Are you sure you want to delete this template?')) return;
+  if (!await showConfirm('Are you sure you want to delete this template?', { isDestructive: true })) return;
   try {
     const res = await fetch(`/api/v1/admin/notification-templates/${id}`, {
       method: 'DELETE',

@@ -213,6 +213,7 @@
 
 <script setup>
 import { ref } from 'vue';
+import { showAlert, showConfirm } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: { type: String, required: true },
@@ -254,7 +255,7 @@ async function saveDraft() {
     const json = await res.json();
     if (res.ok) {
       summary.value = json.data;
-      alert('Discharge summary draft saved.');
+      await showAlert('Discharge summary draft saved.');
     }
   } catch (e) {
     console.error('Save summary error', e);
@@ -265,7 +266,7 @@ async function saveDraft() {
 
 async function finalizeSummary() {
   if (!admissionId.value) return;
-  if (!confirm('Once finalized, this summary is legally sealed. Continue?')) return;
+  if (!await showConfirm('Once finalized, this summary is legally sealed. Continue?')) return;
   finalizing.value = true;
   try {
     const res = await fetch(`/api/v1/ipd/admissions/${admissionId.value}/discharge-summary/finalize`, {
@@ -278,7 +279,7 @@ async function finalizeSummary() {
     const json = await res.json();
     if (res.ok) {
       summary.value = json.data;
-      alert('Discharge summary finalized and locked!');
+      await showAlert('Discharge summary finalized and locked!');
     }
   } catch (e) {
     console.error('Finalize error', e);

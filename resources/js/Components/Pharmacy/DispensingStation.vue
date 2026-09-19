@@ -406,6 +406,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { showAlert } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: {
@@ -486,7 +487,7 @@ async function selectPrescription(rx) {
     if (json.success) {
       previewData.value = json.data;
     } else {
-      alert(json.message || 'Error loading preview');
+      await showAlert(json.message || 'Error loading preview');
     }
   } catch (e) {
     console.error('Preview error:', e);
@@ -516,15 +517,15 @@ async function executeDispensation() {
 
     const json = await res.json();
     if (json.success) {
-      alert(`Success! Prescription dispensed under #${json.data.dispensation_number}`);
+      await showAlert(`Success! Prescription dispensed under #${json.data.dispensation_number}`);
       selectedRx.value = null;
       previewData.value = null;
       await fetchQueue();
     } else {
-      alert(json.message || 'Dispensing failed.');
+      await showAlert(json.message || 'Dispensing failed.');
     }
   } catch (e) {
-    alert('Dispensing execution failed. Please check network and inventory.');
+    await showAlert('Dispensing execution failed. Please check network and inventory.');
   } finally {
     isDispensing.value = false;
   }

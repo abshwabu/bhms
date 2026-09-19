@@ -233,6 +233,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import { showAlert, showConfirm } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: {
@@ -269,26 +270,26 @@ async function fetchPending() {
 }
 
 async function approveDiscount(discount) {
-  if (!confirm(`Approve discount of $${Number(discount.amount).toFixed(2)} on Invoice #${discount.invoice_id?.slice(0, 8)}?`)) {
+  if (!await showConfirm(`Approve discount of $${Number(discount.amount).toFixed(2)} on Invoice #${discount.invoice_id?.slice(0, 8)}?`)) {
     return;
   }
   try {
     await axios.post(`/api/v1/billing/discounts/${discount.id}/approve`);
     await fetchPending();
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to approve discount.');
+    await showAlert(err.response?.data?.message || 'Failed to approve discount.', { status: 'error' });
   }
 }
 
 async function approveRefund(refund) {
-  if (!confirm(`Approve refund #${refund.refund_number} of $${Number(refund.amount).toFixed(2)}?`)) {
+  if (!await showConfirm(`Approve refund #${refund.refund_number} of $${Number(refund.amount).toFixed(2)}?`)) {
     return;
   }
   try {
     await axios.post(`/api/v1/billing/refunds/${refund.id}/approve`);
     await fetchPending();
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to approve refund.');
+    await showAlert(err.response?.data?.message || 'Failed to approve refund.', { status: 'error' });
   }
 }
 
@@ -314,7 +315,7 @@ async function confirmReject() {
     showRejectModal.value = false;
     await fetchPending();
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to reject.');
+    await showAlert(err.response?.data?.message || 'Failed to reject.', { status: 'error' });
   }
 }
 

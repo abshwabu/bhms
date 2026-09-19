@@ -613,6 +613,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { showAlert } from '../../Services/modalDialog';
 import EmergencyBedAllocationModal from './EmergencyBedAllocationModal.vue';
 
 const props = defineProps({
@@ -775,7 +776,7 @@ const submitCaseIntake = async () => {
       isCaseIntakeOpen.value = false;
       await fetchCases();
     } else {
-      alert(json.message || 'Error registering case');
+      await showAlert(json.message || 'Error registering case', { status: 'error' });
     }
   } catch (err) {
     console.error('Failed to submit intake', err);
@@ -821,7 +822,7 @@ const submitTriage = async () => {
       isTriageModalOpen.value = false;
       await fetchCases();
     } else {
-      alert(json.message || 'Error updating triage');
+      await showAlert(json.message || 'Error updating triage', { status: 'error' });
     }
   } catch (err) {
     console.error('Failed to submit triage', err);

@@ -362,6 +362,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { showAlert } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: { type: String, required: true },
@@ -450,7 +451,7 @@ async function fetchDisplayFeed() {
 
 async function callNextPatient() {
   if (!activeDepartmentId.value) {
-    alert('Please choose a department first.');
+    await showAlert('Please choose a department first.');
     return;
   }
   calling.value = true;
@@ -471,7 +472,7 @@ async function callNextPatient() {
     if (json.data) {
       lastCalledToken.value = json.data;
     } else {
-      alert(json.message || 'No waiting patients.');
+      await showAlert(json.message || 'No waiting patients.');
     }
     await fetchQueue();
     await fetchDisplayFeed();
@@ -516,12 +517,12 @@ async function issueToken() {
     });
     const json = await res.json();
     if (res.ok) {
-      alert(`Token Issued: ${json.data.token_code}`);
+      await showAlert(`Token Issued: ${json.data.token_code}`);
       showIssueModal.value = false;
       await fetchQueue();
       await fetchDisplayFeed();
     } else {
-      alert(json.message || 'Error issuing token');
+      await showAlert(json.message || 'Error issuing token');
     }
   } catch (e) {
     console.error('Issue token error', e);

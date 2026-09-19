@@ -920,6 +920,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { showAlert, showConfirm, showPrompt } from '../../Services/modalDialog';
 
 const emit = defineEmits(['impersonation-started']);
 
@@ -1069,7 +1070,7 @@ async function loadTickets() {
 }
 
 async function resolveTicket(ticket) {
-  const notes = prompt('Enter resolution summary for this ticket:', 'Issue investigated and resolved by vendor platform engineering.');
+  const notes = await showPrompt('Enter resolution summary for this ticket:', 'Issue investigated and resolved by vendor platform engineering.');
   if (!notes) return;
 
   try {
@@ -1178,9 +1179,9 @@ async function submitOnboard() {
     if (res.status === 201 && json.data) {
       showOnboardModal.value = false;
       await loadTenants();
-      alert(`Tenant "${json.data.organization.name}" successfully onboarded!`);
+      await showAlert(`Tenant "${json.data.organization.name}" successfully onboarded!`);
     } else {
-      alert(json.message || 'Onboarding error.');
+      await showAlert(json.message || 'Onboarding error.');
     }
   } catch (err) {
     console.error('Failed to onboard tenant:', err);
@@ -1223,10 +1224,10 @@ async function confirmImpersonation() {
       sessionStorage.setItem('hms_impersonation_expires', json.data.expires_at);
 
       emit('impersonation-started', json.data);
-      alert(`Impersonation active for ${json.data.hospital.name}. You are now viewing as support.`);
+      await showAlert(`Impersonation active for ${json.data.hospital.name}. You are now viewing as support.`);
       window.location.reload();
     } else {
-      alert(json.message || 'Could not initiate impersonation.');
+      await showAlert(json.message || 'Could not initiate impersonation.');
     }
   } catch (err) {
     console.error('Impersonation error:', err);
@@ -1270,7 +1271,7 @@ async function confirmSuspension() {
 }
 
 async function reactivateTenant(tenant) {
-  if (!confirm(`Reactivate tenant "${tenant.name}" and restore account access?`)) return;
+  if (!await showConfirm(`Reactivate tenant "${tenant.name}" and restore account access?`)) return;
 
   try {
     const res = await fetch(`/api/v1/super-admin/tenants/${tenant.id}/reactivate`, {
@@ -1336,7 +1337,7 @@ async function publishAnnouncement() {
     if (res.ok) {
       announcementForm.value.title = '';
       announcementForm.value.content = '';
-      alert('Platform announcement broadcasted successfully!');
+      await showAlert('Platform announcement broadcasted successfully!');
     }
   } catch (err) {
     console.error('Broadcast failed:', err);

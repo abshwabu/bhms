@@ -155,6 +155,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { showConfirm } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: {
@@ -273,7 +274,7 @@ async function saveRole() {
 }
 
 async function deleteRole(role) {
-  if (!confirm(`Are you sure you want to delete role "${role.name}"?`)) return;
+  if (!await showConfirm(`Are you sure you want to delete role "${role.name}"?`, { isDestructive: true })) return;
 
   try {
     const res = await fetch(`/api/v1/compliance/roles/${role.id}`, {

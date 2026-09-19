@@ -203,6 +203,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { showConfirm } from '../../Services/modalDialog';
 
 const branches = ref([]);
 const showModal = ref(false);
@@ -297,7 +298,7 @@ async function saveBranch() {
 }
 
 async function deleteBranch(b) {
-  if (!confirm(`Are you sure you want to deactivate branch "${b.name}"?`)) return;
+  if (!await showConfirm(`Are you sure you want to deactivate branch "${b.name}"?`, { isDestructive: true })) return;
 
   try {
     const res = await fetch(`/api/v1/admin/branches/${b.id}`, {

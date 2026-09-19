@@ -868,6 +868,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
+import { showAlert, showPrompt } from '../../Services/modalDialog';
 
 const props = defineProps({
   branchId: {
@@ -1106,18 +1107,21 @@ async function updateDispatchStatus(dispatch, newStatus) {
       await fetchFleetOverview();
       await fetchDispatches();
     } else {
-      alert(json.message || 'Failed to update dispatch status.');
+      await showAlert(json.message || 'Failed to update dispatch status.', { status: 'error' });
     }
   } catch (err) {
     console.error('Status update error:', err);
-    alert('Error communicating with dispatch service.');
+    await showAlert('Error communicating with dispatch service.', { status: 'error' });
   } finally {
     updatingStatusId.value = null;
   }
 }
 
 async function promptCancelDispatch(dispatch) {
-  const reason = prompt('Please enter cancellation reason for this mission:');
+  const reason = await showPrompt('Please enter cancellation reason for this mission:', '', {
+    title: 'Cancel Dispatch Mission',
+    placeholder: 'Cancellation reason...',
+  });
   if (reason === null) return; // user pressed cancel
 
   try {
@@ -1191,11 +1195,11 @@ async function submitDispatchMission() {
       await fetchFleetOverview();
       await fetchDispatches();
     } else {
-      alert(json.message || 'Failed to dispatch ambulance.');
+      await showAlert(json.message || 'Failed to dispatch ambulance.', { status: 'error' });
     }
   } catch (err) {
     console.error('Dispatch mission submit error:', err);
-    alert('Error connecting to ambulance dispatch service.');
+    await showAlert('Error connecting to ambulance dispatch service.', { status: 'error' });
   } finally {
     submittingDispatch.value = false;
   }
@@ -1208,12 +1212,45 @@ function openTelemetryModal(unit) {
       ambulance_id: target.id,
       latitude: target.current_latitude || 9.0300,
       longitude: target.current_longitude || 38.7400,
-      speed_kmh: target.speed_kmh || 50,
-      heading: target.heading || 45,
-      fuel_percentage: target.fuel_percentage || 90,
+      speed_kmh: target.speed_kmh || 45,
+      fuel_level_percent: target.fuel_level_percent || 80,
+      oxygen_tank_level_percent: target.oxygen_tank_level_percent || 95,
+      battery_voltage: target.battery_voltage || 12.8,
+      status: target.current_status || 'en_route',
+      notes: 'Telemetry ping updated from simulation CAD dashboard.',
     };
+    isTelemetryModalOpen.value = true;
   }
-  isTelemetryModalOpen.value = true;
+}
+
+async function submitTelemetry() {
+  submittingTelemetry.value = true;
+  try {
+    const res = await fetch('/api/v1/emergency/telemetry', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        ...telemetryForm.value,
+        timestamp: new Date().toISOString(),
+      }),
+    });
+
+    const json = await res.json();
+    if (json.success) {
+      isTelemetryModalOpen.value = false;
+      await fetchFleetOverview();
+    } else {
+      await showAlert(json.message || 'Failed to transmit telemetry ping.', { status: 'error' });
+    }
+  } catch (err) {
+    console.error('Telemetry submit error:', err);
+    await showAlert('Error transmitting telemetry.', { status: 'error' });
+  } finally {
+    submittingTelemetry.value = false;
+  }
 }
 
 function onTelemetryUnitSelect() {
@@ -1265,11 +1302,11 @@ async function submitTelemetryPing() {
       isTelemetryModalOpen.value = false;
       await fetchFleetOverview();
     } else {
-      alert(json.message || 'Failed to transmit telemetry ping.');
+      await showAlert(json.message || 'Failed to transmit telemetry ping.', { status: 'error' });
     }
   } catch (err) {
     console.error('Telemetry submit error:', err);
-    alert('Error transmitting telemetry.');
+    await showAlert('Error transmitting telemetry.', { status: 'error' });
   } finally {
     submittingTelemetry.value = false;
   }
